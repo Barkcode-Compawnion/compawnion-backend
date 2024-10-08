@@ -13,7 +13,6 @@ const PORT = 3000;
 
 // Load service account key
 const serviceAccount = require("./BarkCode.json");
-const ra = require("./ROUTES/ra");
 
 // Initialize Firebase Admin SDK
 admin.initializeApp({
