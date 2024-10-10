@@ -3,7 +3,7 @@ const application = express.Router();
 module.exports = function (db) {
   // Function to get and increment the next Application ID atomically
   async function getNextAppId() {
-    const counterRef = db.collection("ApplicationCounter").doc("AppIDCounter");
+    const counterRef = db.collection("Counter").doc("AppIDCounter");
 
     try {
       // Use a Firestore transaction to safely increment the App ID counter
