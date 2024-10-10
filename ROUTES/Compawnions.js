@@ -2,7 +2,7 @@ const express = require("express");
 const Compawnions = express.Router();
 module.exports = function (db) {
   async function getNextcompId() {
-    const counterRef = db.collection("CompawnionsCounter").doc("CompIDCounter");
+    const counterRef = db.collection("Counter").doc("CompIDCounter");
 
     try {
       // Use a Firestore transaction to safely increment the Companion ID counter
