@@ -4,7 +4,7 @@ const ra = express.Router();
 module.exports = function (db) {
   // Function to get and increment the next Pet ID atomically
   async function getNextPetId() {
-    const counterRef = db.collection("raCounter").doc("PetIDCounter");
+    const counterRef = db.collection("Counter").doc("PetIDCounter");
 
     try {
       // Use a Firestore transaction to safely increment the Pet ID counter
