@@ -1,15 +1,47 @@
 const express = require("express");
 const application = express.Router();
 module.exports = function (db) {
+  // Function to get and increment the next Application ID atomically
+  async function getNextAppId() {
+    const counterRef = db.collection("ApplicationCounter").doc("AppIDCounter");
+
+    try {
+      // Use a Firestore transaction to safely increment the App ID counter
+      const newAppId = await db.runTransaction(async (transaction) => {
+        const counterDoc = await transaction.get(counterRef);
+
+        if (!counterDoc.exists) {
+          // Initialize counter document if it doesn't exist
+          transaction.set(counterRef, { currentId: 1 });
+          return 1;
+        }
+
+        // Get the current ID value and increment by 1
+        const currentId = counterDoc.data().currentId || 0;
+        const updatedId = currentId + 1;
+
+        // Update the counter document with the new ID value
+        transaction.update(counterRef, { currentId: updatedId });
+
+        return updatedId;
+      });
+
+      return newAppId;
+    } catch (error) {
+      console.error("Error generating new App ID:", error);
+      throw error;
+    }
+  }
+
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   application.post("/", async (req, res) => {
+    const appData = req.body; // Get the incoming data
+
     try {
       const {
         applicationType,
         agreement,
         paymentAgreement,
-        ApplicationId,
-        applicationpetId,
         schedules: { onlineInterview, onsiteVisit },
         petOwnershipExperience,
         dwelling: {
@@ -40,13 +72,22 @@ module.exports = function (db) {
           },
           validId,
         },
-      } = req.body;
-      const comp = {
+      } = appData;
+
+      console.log("Received data:", appData); // Log received data
+
+      // Get the next auto-incremented Application ID
+      const appId = await getNextAppId();
+
+      // Format the Application ID to include leading zeros (e.g., 000-001)
+      const formattedAppId = appId.toString().padStart(3, "0");
+
+      // Create the new application object
+      const newApplication = {
         applicationType,
         agreement,
         paymentAgreement,
-        ApplicationId,
-        applicationpetId,
+        applicationAppId: formattedAppId, // Use the new formatted App ID
         schedules: { onlineInterview, onsiteVisit },
         petOwnershipExperience,
         dwelling: {
@@ -78,10 +119,20 @@ module.exports = function (db) {
           validId,
         },
       };
-      const compRef = await db.collection("Application").add(comp);
-      res.status(201).json({ id: compRef.id, ...comp });
+
+      // Add the new application document with the auto-incremented Application ID as the document ID
+      await db
+        .collection("Application")
+        .doc(formattedAppId)
+        .set(newApplication);
+
+      console.log(`Document added with Application ID: ${formattedAppId}`);
+      res
+        .status(201)
+        .send({ message: `Application added with ID: ${formattedAppId}` });
     } catch (error) {
-      res.status(500).json({ message: "Error creating an Application", error });
+      console.error("Error occurred while processing the request:", error);
+      res.status(500).json({ message: "Error adding an application", error });
     }
   });
 
