@@ -6,7 +6,7 @@ module.exports = function (db) {
 
   // Function to get and increment the next Admin ID automically
   async function getNextAdminId() {
-    const counterRef = db.collection("AdminCounter").doc("AdminIDCounter");
+    const counterRef = db.collection("Counter").doc("AdminIDCounter");
 
     try {
       // Use a Firestore transaction to safely increment the Admin ID counter
