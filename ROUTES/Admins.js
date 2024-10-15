@@ -1,10 +1,14 @@
 const express = require("express");
+const jwt = require("jsonwebtoken"); // Import jsonwebtoken
+const bcrypt = require("bcrypt"); // Import bcrypt for hashing passwords
 const Admins = express.Router();
 
-module.exports = function (db) {
-  //  CRUD FOR ADMIN
+const secretKey = "sikretolangto"; // Replace with your secret key
 
-  // Function to get and increment the next Admin ID automically
+module.exports = function (db) {
+  // CRUD FOR ADMIN
+
+  // Function to get and increment the next Admin ID automatically
   async function getNextAdminId() {
     const counterRef = db.collection("Counter").doc("AdminIDCounter");
 
@@ -31,62 +35,95 @@ module.exports = function (db) {
 
       return newAdminId;
     } catch (error) {
-      console.error("Error generating new Pet ID:", error);
+      console.error("Error generating new Admin ID:", error);
       throw error;
     }
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // create
+  // Create
 
-  Admins.post("/", async (req, res) => {
-    const AdminData = req.body;
+  Admins.post("/register", async (req, res) => {
+    const { Username, Password, Email, Mobilenumber, Position } = req.body;
 
     try {
-      const { ID, Username, Password, Email, Mobilenumber, Position } =
-        req.body;
-      console.log("Received data:", AdminData); // Log received data
-      const newUser = { ID, Username, Password, Email, Mobilenumber, Position };
+      // Check if the username already exists
+      const existingUserSnapshot = await db
+        .collection("Admins")
+        .where("Username", "==", Username)
+        .get();
 
-      try {
-        console.log("Generating next Admin ID...");
-        const AdminId = await getNextAdminId(); // Call to get next Admin ID
-
-        if (AdminId === undefined) {
-          console.error("Admin ID is undefined.");
-          return res
-            .status(500)
-            .send({ message: "Failed to generate Admin ID." });
-        }
-
-        const formattedAdminId = AdminId.toString().padStart(3, "0");
-        console.log(`Formatted Admin ID: ${formattedAdminId}`);
-
-        // Add the new pet document with the auto-incremented Admin ID
-        await db
-          .collection("Admins")
-          .doc(formattedAdminId)
-          .set({
-            ...newUser,
-            AdminId: formattedAdminId, // Include the formatted Admin ID
-          });
-
-        console.log(`Document added with Pet ID: ${formattedAdminId}`);
-        res
-          .status(200)
-          .send({ message: `Pet added with ID: ${formattedAdminId}` });
-      } catch (error) {
-        console.error("Error while adding new Admin:", error);
-        res.status(500).send({ message: "Failed to add new Admin.", error });
+      if (!existingUserSnapshot.empty) {
+        return res.status(400).json({ message: "Username already exists." });
       }
+
+      // Hash the password before storing it
+      const hashedPassword = await bcrypt.hash(Password, 10);
+
+      // Generate a unique token for the user
+      const token = jwt.sign({ Username }, secretKey, { expiresIn: "1h" });
+
+      // Call to get the next Admin ID
+      const AdminId = await getNextAdminId();
+      const formattedAdminId = AdminId.toString().padStart(3, "0");
+
+      // Add the new Admin document with the hashed password and token
+      await db.collection("Admins").doc(formattedAdminId).set({
+        Username,
+        Password: hashedPassword, // Store the hashed password
+        Email,
+        Mobilenumber,
+        Position,
+        AdminId: formattedAdminId,
+        token, // Store the generated token
+      });
+
+      res.status(201).json({
+        message: `Staff registered successfully with ID: ${formattedAdminId}`,
+        token,
+      });
     } catch (error) {
-      console.error("Error occurred while processing the request:", error);
-      res.status(500).json({ message: "Error adding an Admin", error });
+      console.error("Error registering staff:", error);
+      res.status(500).json({ message: "Failed to register staff.", error });
     }
   });
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  //   read
+  // Login
+
+  Admins.post("/login", async (req, res) => {
+    const { Username, Password } = req.body;
+
+    try {
+      // Fetch user by Username field
+      const userSnapshot = await db
+        .collection("Admins")
+        .where("Username", "==", Username)
+        .get();
+
+      // Check if any user was found
+      if (userSnapshot.empty) {
+        return res.status(404).json({ message: "User not found." });
+      }
+
+      const userData = userSnapshot.docs[0].data(); // Get the first matching document
+
+      // Check the password
+      const isMatch = await bcrypt.compare(Password, userData.Password);
+      if (!isMatch) {
+        return res.status(401).json({ message: "Invalid credentials." });
+      }
+
+      // Return the token if credentials are valid
+      res.json({ token: userData.token });
+    } catch (error) {
+      console.error("Error logging in:", error);
+      res.status(500).json({ message: "Failed to log in.", error });
+    }
+  });
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Read
 
   Admins.get("/", async (req, res) => {
     try {
@@ -115,7 +152,7 @@ module.exports = function (db) {
   });
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  //   update
+  // Update
 
   Admins.put("/:id", async (req, res) => {
     try {
@@ -130,7 +167,7 @@ module.exports = function (db) {
   });
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // delete
+  // Delete
 
   Admins.delete("/:id", async (req, res) => {
     try {
