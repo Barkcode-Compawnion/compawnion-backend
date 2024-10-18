@@ -27,8 +27,13 @@ const db = admin.firestore();
 // MIDDLEWARES
 
 // Middleware to parse JSON bodies
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({
+  limit: "50mb",
+}));
+app.use(express.urlencoded({
+  extended: true,
+  limit: "50mb",
+}));
 
 // Cors Middleware
 app.use((req, res, next) => {
