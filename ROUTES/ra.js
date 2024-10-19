@@ -41,7 +41,6 @@ module.exports = function (db) {
 
     try {
       const {
-        //vcvc
         personal: {
         picture,
         name,
