@@ -1,3 +1,6 @@
+// etong route yung gagamitin sa paggawa ng mga admin or staff so eto 
+// yung need iconnect sa superadmin desktop
+
 const express = require("express");
 const jwt = require("jsonwebtoken"); // Import jsonwebtoken
 const bcrypt = require("bcrypt"); // Import bcrypt for hashing passwords
