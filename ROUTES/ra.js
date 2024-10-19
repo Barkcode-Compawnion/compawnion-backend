@@ -38,117 +38,108 @@ module.exports = function (db) {
 
   ra.post("/", async (req, res) => {
     const petData = req.body;
-
+  
     try {
       const {
+        personal: {
+          picture,
+          name,
+          type,
+          age: { month, year },
+          breed,
+          weight,
+          size,
+          gender,
+        },
+        background: {
+          personality,
+          backgroundStory,
+          vaccinations,
+          medicalHistory,
+        },
         rfid,
-        picture,
-        name,
-        type,
-        breed,
-        age,
-        size,
-        personality,
-        backgroundStory,
-        vaccinations,
-        medicalHistory,
       } = petData; // Use petData directly
-
+  
       console.log("Received data:", petData); // Log received data
-
+  
       // Get the next auto-incremented Pet ID
       const petId = await getNextPetId();
-
+  
       // Format the Pet ID to include leading zeros (e.g., 000-001)
       const formattedPetId = petId.toString().padStart(3, "0");
-
+  
       // Add the new pet document with the auto-incremented Pet ID as the document ID
-      await db
-        .collection("RescuedAnimals")
-        .doc(formattedPetId)
-        .set({
-          ...petData,
-          petId: formattedPetId, // Add the Pet ID to the document data
-        });
-
+      await db.collection("RescuedAnimals").doc(formattedPetId).set({
+        // Spread the petData to include everything except petId
+        ...petData,
+        // Optionally, log the formattedPetId for internal tracking if needed
+      });
+  
       console.log(`Document added with Pet ID: ${formattedPetId}`);
-
+  
       // Respond with success after adding the pet
-      return res
-        .status(200)
-        .send({ message: `Pet added with ID: ${formattedPetId}` });
+      return res.status(200).send({ message: `Pet added with ID: ${formattedPetId}` });
     } catch (error) {
       console.error("Error adding new pet:", error);
-      return res
-        .status(500)
-        .send({ message: "Failed to add new pet.", error: error.message });
+      return res.status(500).send({ message: "Failed to add new pet.", error: error.message });
     }
   });
+  
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  ra.post("/", async (req, res) => {
-    const petData = req.body;
+  // ra.post("/", async (req, res) => {
+  //   const petData = req.body;
 
-    try {
-      const {
-        rfid,
-        picture,
-        name,
-        type,
-        breed,
-        age,
-        size,
-        personality,
-        backgroundStory,
-        vaccinations,
-        medicalHistory,
-      } = req.body;
-      console.log("Received data:", petData); // Log received data
-      const newUser = {
-        rfid,
-        picture,
-        name,
-        type,
-        breed,
-        age,
-        size,
-        personality,
-        backgroundStory,
-        vaccinations,
-        medicalHistory,
-      };
+  //   try {
+  //     const {
+  //       personal: {
+  //         picture,
+  //         name,
+  //         type,
+  //         age: { month, year },
+  //         breed,
+  //         weight,
+  //         size,
+  //         gender,
+  //       },
+  //       background: {
+  //         personality,
+  //         backgroundStory,
+  //         vaccinations,
+  //         medicalHistory,
+  //       },
+  //       rfid,
+  //     } = petData; // Use petData directly
 
-      try {
-        // Get the next auto-incremented Pet ID
-        const petId = await getNextPetId();
+  //     console.log("Received data:", petData); // Log received data
 
-        // Format the Pet ID to include leading zeros (e.g., 000-001)
-        const formattedPetId = petId.toString().padStart(3, "0");
+  //     // Get the next auto-incremented Pet ID
+  //     const petId = await getNextPetId();
 
-        // Add the new pet document with the auto-incremented Pet ID as the document ID
-        await db
-          .collection("RescuedAnimals")
-          .doc(formattedPetId)
-          .set({
-            ...petData,
-            petId: formattedPetId, // Add the Pet ID to the document data
-          });
+  //     // Format the Pet ID to include leading zeros (e.g., 000-001)
+  //     const formattedPetId = petId.toString().padStart(3, "0");
 
-        console.log(`Document added with Pet ID: ${formattedPetId}`);
-        res
-          .status(200)
-          .send({ message: `Pet added with ID: ${formattedPetId}` });
-      } catch (error) {
-        console.error("Error adding new pet:", error);
-        res.status(500).send({ message: "Failed to add new pet." });
-      }
+  //     // Add the new pet document with the auto-incremented Pet ID as the document ID
+  //     await db
+  //       .collection("RescuedAnimals")
+  //       .doc(formattedPetId)
+  //       .set({
+  //         ...petData,
+  //         petId: formattedPetId, // Add the Pet ID to the document data
+  //       });
 
-      const userRef = await db.collection("RescuedAnimals").add(newUser);
-      res.status(201).json({ id: userRef.id, ...newUser });
-    } catch (error) {
-      res.status(500).json({ message: "Error adding animals", error });
-    }
-  });
+  //     console.log(`Document added with Pet ID: ${formattedPetId}`);
+
+  //     // Respond with success after adding the pet
+  //     return res
+  //       .status(200)
+  //       .send({ message: `Pet added with ID: ${formattedPetId}` });
+  //   } catch (error) {
+  //     console.error("Error adding new pet:", error);
+  //     return res
+  //       .status(500)
+  //       .send({ message: "Failed to add new pet.", error: error.message });
+  //   }
+  // });
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ra.get("/", async (req, res) => {
