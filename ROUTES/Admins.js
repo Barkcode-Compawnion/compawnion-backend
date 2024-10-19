@@ -1,5 +1,5 @@
 // etong route yung gagamitin sa paggawa ng mga admin or staff so eto 
-// yung need iconnect sa superadmin desktop
+// yung need iconnect sa mga fields ng superadmin desktop
 
 const express = require("express");
 const jwt = require("jsonwebtoken"); // Import jsonwebtoken

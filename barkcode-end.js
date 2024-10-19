@@ -50,11 +50,13 @@ const adminRoute = require("./ROUTES/Admins")(db);
 const applicationRoute = require("./ROUTES/application")(db);
 const compawnionRoute = require("./ROUTES/Compawnions")(db);
 const raRoute = require("./ROUTES/ra")(db);
+const superadminRoute = require("./ROUTES/superadmin")(db);
 
 app.use("/Admins", adminRoute);
 app.use("/application", applicationRoute);
 app.use("/Compawnions", compawnionRoute);
 app.use("/ra", raRoute);
+app.use("/superadmin", superadminRoute);
 
 // Root route
 app.get("/", (req, res) => {
