@@ -41,6 +41,7 @@ module.exports = function (db) {
 
     try {
       const {
+        //vcvc
         personal: {
         picture,
         name,
@@ -54,8 +55,8 @@ module.exports = function (db) {
         background: {
         personality,
         backgroundStory,
-        vaccinations,
-        medicalHistory,
+        vaccination:{vaccinationDate, vaccinationExp},
+        medicalHistory: {medicalDate, medicalCert},
         },
         rfid,
       } = petData; // Use petData directly
