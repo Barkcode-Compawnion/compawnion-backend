@@ -57,7 +57,7 @@ module.exports = function (db) {
         vaccination:{vaccinationDate, vaccinationExp},
         medicalHistory: {medicalDate, medicalCert},
         },
-        rfid,
+        rfid
       } = petData; // Use petData directly
 
       console.log("Received data:", petData); // Log received data

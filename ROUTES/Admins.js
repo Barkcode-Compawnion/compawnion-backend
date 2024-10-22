@@ -1,37 +1,27 @@
-// etong route yung gagamitin sa paggawa ng mga admin or staff so eto 
-// yung need iconnect sa mga fields ng superadmin desktop
-// hehe
-
 const express = require("express");
-const jwt = require("jsonwebtoken"); // Import jsonwebtoken
-const bcrypt = require("bcrypt"); // Import bcrypt for hashing passwords
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
+const cron = require("node-cron");
 const Admins = express.Router();
 
 const secretKey = "sikretolangto"; // Replace with your secret key
 
 module.exports = function (db) {
-  // CRUD FOR ADMIN
-
   // Function to get and increment the next Admin ID automatically
   async function getNextAdminId() {
     const counterRef = db.collection("Counter").doc("AdminIDCounter");
 
     try {
-      // Use a Firestore transaction to safely increment the Admin ID counter
       const newAdminId = await db.runTransaction(async (transaction) => {
         const counterDoc = await transaction.get(counterRef);
 
         if (!counterDoc.exists) {
-          // Initialize counter document if it doesn't exist
           transaction.set(counterRef, { currentId: 1 });
           return 1;
         }
 
-        // Get the current ID value and increment by 1
         const currentId = counterDoc.data().currentId || 0;
         const updatedId = currentId + 1;
-
-        // Update the counter document with the new ID value
         transaction.update(counterRef, { currentId: updatedId });
 
         return updatedId;
@@ -45,10 +35,11 @@ module.exports = function (db) {
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Create
+  // Create Admin
 
   Admins.post("/register", async (req, res) => {
-    const { Username, Password, Email, Mobilenumber, Position } = req.body;
+    const { Name, Picture, Username, Password, Email, Mobilenumber, Position } =
+      req.body;
 
     try {
       // Check if the username already exists
@@ -56,31 +47,37 @@ module.exports = function (db) {
         .collection("Admins")
         .where("Username", "==", Username)
         .get();
-
       if (!existingUserSnapshot.empty) {
         return res.status(400).json({ message: "Username already exists." });
       }
 
       // Hash the password before storing it
       const hashedPassword = await bcrypt.hash(Password, 10);
-
-      // Generate a unique token for the user
       const token = jwt.sign({ Username }, secretKey, { expiresIn: "1h" });
 
       // Call to get the next Admin ID
       const AdminId = await getNextAdminId();
       const formattedAdminId = AdminId.toString().padStart(3, "0");
 
-      // Add the new Admin document with the hashed password and token
-      await db.collection("Admins").doc(formattedAdminId).set({
-        Username,
-        Password: hashedPassword, // Store the hashed password
-        Email,
-        Mobilenumber,
-        Position,
-        AdminId: formattedAdminId,
-        token, // Store the generated token
-      });
+      // Add the new Admin document without saving AdminId
+      await db
+        .collection("Admins")
+        .doc(formattedAdminId)
+        .set({
+          aStaffInfo: {
+            Name,
+            Picture,
+            Username,
+            Password: hashedPassword, // Store the hashed password
+            Email,
+            Mobilenumber,
+            Position,
+          },
+          token,
+          Status: "Inactive", // Set initial status to Inactive
+          LastLogin: null, // Placeholder for last login
+          LastLogout: null, // Placeholder for last logout
+        });
 
       res.status(201).json({
         message: `Staff registered successfully with ID: ${formattedAdminId}`,
@@ -93,32 +90,50 @@ module.exports = function (db) {
   });
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Login
+  // Login Admin
 
   Admins.post("/login", async (req, res) => {
     const { Username, Password } = req.body;
+    console.log(`Login attempt for username: ${Username}`); // Log the username
 
     try {
-      // Fetch user by Username field
+      // Retrieve the user based on the provided username
       const userSnapshot = await db
         .collection("Admins")
-        .where("Username", "==", Username)
+        .where("aStaffInfo.Username", "==", Username)
         .get();
+      console.log(
+        `User snapshot found: ${userSnapshot.docs.length} document(s)`
+      );
 
-      // Check if any user was found
+      // Check if the user exists
       if (userSnapshot.empty) {
+        console.log("No user found with this username.");
         return res.status(404).json({ message: "User not found." });
       }
 
-      const userData = userSnapshot.docs[0].data(); // Get the first matching document
+      // Get the user data
+      const userData = userSnapshot.docs[0].data();
 
-      // Check the password
-      const isMatch = await bcrypt.compare(Password, userData.Password);
+      // Compare the provided password with the hashed password stored in Firestore
+      const isMatch = await bcrypt.compare(
+        Password,
+        userData.aStaffInfo.Password
+      );
+
       if (!isMatch) {
+        console.log("Invalid credentials.");
         return res.status(401).json({ message: "Invalid credentials." });
       }
 
-      // Return the token if credentials are valid
+      // Update the user's status and last login timestamp
+      const loginTimestamp = new Date().toISOString();
+      await userSnapshot.docs[0].ref.update({
+        Status: "Active",
+        LastLogin: loginTimestamp,
+      });
+
+      // Return the token for the logged-in user
       res.json({ token: userData.token });
     } catch (error) {
       console.error("Error logging in:", error);
@@ -127,7 +142,40 @@ module.exports = function (db) {
   });
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Read
+  // Logout Admin
+
+  Admins.post("/logout", async (req, res) => {
+    const { Username } = req.body; // Get the Username from the request body
+
+    if (!Username) {
+      return res.status(400).json({ message: "Username is required." });
+    }
+
+    try {
+      // Retrieve the user based on the Username
+      const userSnapshot = await db
+        .collection("Admins")
+        .where("aStaffInfo.Username", "==", Username)
+        .get();
+
+      if (userSnapshot.empty) {
+        return res.status(404).json({ message: "User not found." });
+      }
+
+      // Set the LastLogout timestamp
+      await userSnapshot.docs[0].ref.update({
+        LastLogout: new Date().toISOString(), // Record the time of logout
+      });
+
+      res.json({ message: "Logout successful." });
+    } catch (error) {
+      console.error("Error logging out:", error);
+      res.status(500).json({ message: "Failed to log out.", error });
+    }
+  });
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Read All Admins
 
   Admins.get("/", async (req, res) => {
     try {
@@ -139,6 +187,7 @@ module.exports = function (db) {
     }
   });
 
+  // Read a specific Admin by ID
   Admins.get("/:id", async (req, res) => {
     try {
       const userId = req.params.id;
@@ -146,17 +195,16 @@ module.exports = function (db) {
       const doc = await userRef.get();
 
       if (!doc.exists) {
-        res.status(404).json({ message: "Admin not found" });
-      } else {
-        res.json({ id: doc.id, ...doc.data() });
+        return res.status(404).json({ message: "Admin not found" });
       }
+      res.json({ id: doc.id, ...doc.data() });
     } catch (error) {
       res.status(500).json({ message: "Error retrieving Admins", error });
     }
   });
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Update
+  // Update Admin
 
   Admins.put("/:id", async (req, res) => {
     try {
@@ -171,7 +219,7 @@ module.exports = function (db) {
   });
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Delete
+  // Delete Admin
 
   Admins.delete("/:id", async (req, res) => {
     try {
@@ -181,6 +229,51 @@ module.exports = function (db) {
       res.json({ message: "Admin deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Error deleting Admin", error });
+    }
+  });
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // Scheduled Task to Check Inactive Users
+  cron.schedule("0 0 * * *", async () => {
+    // This will run every day at midnight
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6); // Set to 6 months ago
+
+    try {
+      const snapshot = await db.collection("Admins").get();
+      const inactiveUsers = [];
+
+      snapshot.forEach((doc) => {
+        const userData = doc.data();
+        const lastLoginDate = userData.LastLogin
+          ? new Date(userData.LastLogin)
+          : null;
+
+        // Check if the account has been inactive for more than 6 months
+        if (
+          lastLoginDate &&
+          lastLoginDate < sixMonthsAgo &&
+          userData.Status === "Active"
+        ) {
+          inactiveUsers.push(doc.id); // Add to the list for status update
+        }
+      });
+
+      // Update inactive users' status to Inactive
+      for (const userId of inactiveUsers) {
+        await db
+          .collection("Admins")
+          .doc(userId)
+          .update({ Status: "Inactive" });
+        console.log(`Updated user with ID: ${userId} to Inactive status.`);
+      }
+
+      console.log(
+        `Checked for inactive accounts. Updated ${inactiveUsers.length} users to Inactive status.`
+      );
+    } catch (error) {
+      console.error("Error checking inactive accounts:", error);
     }
   });
 
