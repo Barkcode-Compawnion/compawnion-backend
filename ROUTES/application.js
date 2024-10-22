@@ -1,5 +1,6 @@
 const express = require("express");
 const application = express.Router();
+
 module.exports = function (db) {
   // Function to get and increment the next Application ID atomically
   async function getNextAppId() {
@@ -34,6 +35,8 @@ module.exports = function (db) {
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  
+  // POST route to add a new application
   application.post("/", async (req, res) => {
     const appData = req.body; // Get the incoming data
 
@@ -121,70 +124,77 @@ module.exports = function (db) {
       };
 
       // Add the new application document with the auto-incremented Application ID as the document ID
-      await db
-        .collection("Application")
-        .doc(formattedAppId)
-        .set(newApplication);
+      await db.collection("Application").doc(formattedAppId).set(newApplication);
 
       console.log(`Document added with Application ID: ${formattedAppId}`);
-      res
-        .status(201)
-        .send({ message: `Application added with ID: ${formattedAppId}` });
+      return res.status(201).send({ message: `Application added with ID: ${formattedAppId}` });
     } catch (error) {
       console.error("Error occurred while processing the request:", error);
-      res.status(500).json({ message: "Error adding an application", error });
+      return res.status(500).json({ message: "Error adding an application", error: error.message });
     }
   });
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // GET route to retrieve all applications
   application.get("/", async (req, res) => {
     try {
       const snapshot = await db.collection("Application").get();
-      const users = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      res.json(users);
+      const applications = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      res.json(applications);
     } catch (error) {
-      res.status(500).json({ message: "Error retrieving Application", error });
+      console.error("Error retrieving applications:", error);
+      res.status(500).json({ message: "Error retrieving applications", error });
     }
   });
 
+  // GET route to retrieve a specific application by ID
   application.get("/:id", async (req, res) => {
     try {
-      const userId = req.params.id;
-      const userRef = db.collection("Application").doc(userId);
-      const doc = await userRef.get();
+      const appId = req.params.id;
+      const appRef = db.collection("Application").doc(appId);
+      const doc = await appRef.get();
 
       if (!doc.exists) {
-        res.status(404).json({ message: "application not found" });
-      } else {
-        res.json({ id: doc.id, ...doc.data() });
+        return res.status(404).json({ message: "Application not found" });
       }
+
+      res.json({ id: doc.id, ...doc.data() });
     } catch (error) {
+      console.error("Error retrieving application:", error);
       res.status(500).json({ message: "Error retrieving application", error });
     }
   });
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // PUT route to update a specific application by ID
   application.put("/:id", async (req, res) => {
     try {
-      const userId = req.params.id;
-      const userRef = db.collection("Application").doc(userId);
-      const updatedUser = req.body;
-      await userRef.update(updatedUser);
-      res.json({ message: "application updated successfully" });
+      const appId = req.params.id;
+      const appRef = db.collection("Application").doc(appId);
+      const updatedData = req.body;
+
+      await appRef.update(updatedData);
+      res.json({ message: "Application updated successfully" });
     } catch (error) {
+      console.error("Error updating application:", error);
       res.status(500).json({ message: "Error updating application", error });
     }
   });
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // DELETE route to remove a specific application by ID
   application.delete("/:id", async (req, res) => {
     try {
-      const userId = req.params.id;
-      const userRef = db.collection("Application").doc(userId);
-      await userRef.delete();
+      const appId = req.params.id;
+      const appRef = db.collection("Application").doc(appId);
+      await appRef.delete();
       res.json({ message: "Application deleted successfully" });
     } catch (error) {
-      res.status(500).json({ message: "Error deleting an Application", error });
+      console.error("Error deleting application:", error);
+      res.status(500).json({ message: "Error deleting application", error });
     }
   });
 

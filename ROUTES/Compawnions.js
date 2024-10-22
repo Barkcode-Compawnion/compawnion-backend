@@ -1,25 +1,25 @@
 const express = require("express");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
 const Compawnions = express.Router();
+
+const secretKey = "sikretolangto"; // Replace with your secret key
+
 module.exports = function (db) {
-  async function getNextcompId() {
+  async function getNextCompId() {
     const counterRef = db.collection("Counter").doc("CompIDCounter");
 
     try {
-      // Use a Firestore transaction to safely increment the Companion ID counter
       const newCompId = await db.runTransaction(async (transaction) => {
         const counterDoc = await transaction.get(counterRef);
 
         if (!counterDoc.exists) {
-          // Initialize counter document if it doesn't exist
           transaction.set(counterRef, { currentId: 1 });
           return 1;
         }
 
-        // Get the current ID value and increment by 1
         const currentId = counterDoc.data().currentId || 0;
         const updatedId = currentId + 1;
-
-        // Update the counter document with the new ID value
         transaction.update(counterRef, { currentId: updatedId });
 
         return updatedId;
@@ -28,69 +28,175 @@ module.exports = function (db) {
       return newCompId;
     } catch (error) {
       console.error("Error generating new Companion ID:", error);
-      throw error;
+      throw new Error("Failed to generate new Companion ID.");
     }
   }
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  Compawnions.post("/", async (req, res) => {
-    const compData = req.body;
-    console.log("Received data:", compData); // Log received data
+  // Register Companion
+  Compawnions.post("/register", async (req, res) => {
+    const {
+      UserUsername,
+      UserPassword,
+      UserEmail,
+      UserPhone,
+      UserBday,
+      UserAge,
+      UserAddress,
+      UserPetID,
+      UserApplication,
+    } = req.body;
 
     try {
-      const {
-        UserAcctID,
-        UserUsername,
-        UserPassword,
-        UserEmail,
-        UserPhone,
-        UserBday,
-        UserAge,
-        UserAddress,
-        UserPetID,
-        UserApplication,
-      } = compData; // Use compData directly
+      // Check if the username already exists
+      const existingUserSnapshot = await db
+        .collection("Compawnions")
+        .where("CompawnionUser.UserUsername", "==", UserUsername)
+        .get();
+      if (!existingUserSnapshot.empty) {
+        return res.status(400).json({ message: "Username already exists." });
+      }
 
-      // Get the next auto-incremented Companion ID
-      const compId = await getNextcompId();
+      // Hash the password before storing it
+      const hashedPassword = await bcrypt.hash(UserPassword, 10);
+      const token = jwt.sign({ UserUsername }, secretKey, { expiresIn: "1h" });
 
-      // Format the Companion ID to include leading zeros (e.g., 000-001)
+      // Call to get the next Companion ID
+      const compId = await getNextCompId();
       const formattedCompId = compId.toString().padStart(3, "0");
 
-      // Prepare the new companion document
-      const newCompanion = {
-        ...compData,
-        compId: formattedCompId, // Add the Companion ID to the document data
-      };
-
-      // Add the new companion document to Firestore
-      await db.collection("Compawnions").doc(formattedCompId).set(newCompanion);
-
-      console.log(`Document added with Companion ID: ${formattedCompId}`);
-      res
-        .status(201)
-        .send({ message: `Companion added with ID: ${formattedCompId}` });
-    } catch (error) {
-      console.error("Error adding new companion:", error);
-      res
-        .status(500)
-        .send({
-          message: "Failed to add new companion.",
-          error: error.message,
+      // Add the new Companion document
+      await db
+        .collection("Compawnions")
+        .doc(formattedCompId)
+        .set({
+          CompawnionUser: {
+            UserUsername,
+            Password: hashedPassword, // Store the hashed password
+            UserEmail,
+            UserPhone,
+            UserBday,
+            UserAge,
+            UserAddress,
+            UserPetID,
+            UserApplication,
+          },
+          token,
+          Status: "Inactive", // Set initial status to Inactive
+          LastLogin: null, // Placeholder for last login
+          LastLogout: null, // Placeholder for last logout
         });
+
+      res.status(201).json({
+        message: `Companion registered successfully with ID: ${formattedCompId}`,
+        token,
+      });
+    } catch (error) {
+      console.error("Error registering companion:", error);
+      res.status(500).json({ message: "Failed to register companion." });
     }
   });
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Login Companion
+  Compawnions.post("/login", async (req, res) => {
+    const { UserUsername, UserPassword } = req.body;
+
+    try {
+      // Retrieve the user based on the provided username
+      const userSnapshot = await db
+        .collection("Compawnions")
+        .where("CompawnionUser.UserUsername", "==", UserUsername) // Correct path to the username
+        .get();
+
+      // Check if the user exists
+      if (userSnapshot.empty) {
+        return res.status(404).json({ message: "User not found." });
+      }
+
+      // Get the user data
+      const userData = userSnapshot.docs[0].data();
+
+      // Compare the provided password with the hashed password stored in Firestore
+      const isMatch = await bcrypt.compare(
+        UserPassword,
+        userData.CompawnionUser.Password
+      ); // Adjusted path to Password
+
+      if (!isMatch) {
+        return res.status(401).json({ message: "Invalid credentials." });
+      }
+
+      // Update the user's status and last login timestamp
+      const loginTimestamp = new Date().toISOString();
+      await userSnapshot.docs[0].ref.update({
+        Status: "Active",
+        LastLogin: loginTimestamp,
+      });
+
+      // Return the token for the logged-in user
+      res.json({ token: userData.token });
+    } catch (error) {
+      console.error("Error logging in:", error);
+      res.status(500).json({ message: "Failed to log in." });
+    }
+  });
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // Logout Companion
+  Compawnions.post("/logout", async (req, res) => {
+    const { UserUsername } = req.body;
+
+    if (!UserUsername) {
+      return res.status(400).json({ message: "Username is required." });
+    }
+
+    try {
+      // Retrieve the user based on the Username
+      const userSnapshot = await db
+        .collection("Compawnions")
+        .where("CompawnionUser.UserUsername", "==", UserUsername)
+        .get();
+
+      if (userSnapshot.empty) {
+        return res.status(404).json({ message: "User not found." });
+      }
+
+      // Set the LastLogout timestamp
+      await userSnapshot.docs[0].ref.update({
+        LastLogout: new Date().toISOString(), // Record the time of logout
+      });
+
+      res.json({ message: "Logout successful." });
+    } catch (error) {
+      console.error("Error logging out:", error);
+      res.status(500).json({ message: "Failed to log out." });
+    }
+  });
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // Read All Companions
   Compawnions.get("/", async (req, res) => {
     try {
       const snapshot = await db.collection("Compawnions").get();
-      const users = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      res.json(users);
+      const companions = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      res.json({
+        message: "Companions retrieved successfully.",
+        data: companions,
+      });
     } catch (error) {
-      res.status(500).json({ message: "Error retrieving Users", error });
+      res.status(500).json({ message: "Error retrieving Companions." });
     }
   });
 
+  // Read a specific Companion by ID
   Compawnions.get("/:id", async (req, res) => {
     try {
       const userId = req.params.id;
@@ -98,37 +204,43 @@ module.exports = function (db) {
       const doc = await userRef.get();
 
       if (!doc.exists) {
-        res.status(404).json({ message: "User not found" });
-      } else {
-        res.json({ id: doc.id, ...doc.data() });
+        return res.status(404).json({ message: "Companion not found." });
       }
+      res.json({
+        message: "Companion retrieved successfully.",
+        data: { id: doc.id, ...doc.data() },
+      });
     } catch (error) {
-      res.status(500).json({ message: "Error retrieving User", error });
+      res.status(500).json({ message: "Error retrieving Companion." });
     }
   });
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Update Companion
   Compawnions.put("/:id", async (req, res) => {
     try {
       const userId = req.params.id;
       const userRef = db.collection("Compawnions").doc(userId);
       const updatedUser = req.body;
       await userRef.update(updatedUser);
-      res.json({ message: "User updated successfully" });
+      res.json({ message: "Companion updated successfully." });
     } catch (error) {
-      res.status(500).json({ message: "Error updating User", error });
+      res.status(500).json({ message: "Error updating Companion." });
     }
   });
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Delete Companion
   Compawnions.delete("/:id", async (req, res) => {
     try {
       const userId = req.params.id;
       const userRef = db.collection("Compawnions").doc(userId);
       await userRef.delete();
-      res.json({ message: "User deleted successfully" });
+      res.json({ message: "Companion deleted successfully." });
     } catch (error) {
-      res.status(500).json({ message: "Error deleting User", error });
+      res.status(500).json({ message: "Error deleting Companion." });
     }
   });
 
