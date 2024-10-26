@@ -38,7 +38,7 @@ module.exports = function (db) {
   // Create Admin
 
   Admins.post("/register", async (req, res) => {
-    const { Name, Picture, Username, Password, Email, Mobilenumber } = req.body;
+    const { Name, Picture, Username, Password, Email, Mobilenumber, Branches } = req.body;
 
     try {
       // Check if the username already exists
@@ -70,6 +70,7 @@ module.exports = function (db) {
             Password: hashedPassword, // Store the hashed password
             Email,
             Mobilenumber,
+            Branches,
           },
           token,
           LastLogin: null, // Placeholder for last login
