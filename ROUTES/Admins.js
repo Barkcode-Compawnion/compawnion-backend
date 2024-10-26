@@ -38,8 +38,7 @@ module.exports = function (db) {
   // Create Admin
 
   Admins.post("/register", async (req, res) => {
-    const { Name, Picture, Username, Password, Email, Mobilenumber, Position } =
-      req.body;
+    const { Name, Picture, Username, Password, Email, Mobilenumber } = req.body;
 
     try {
       // Check if the username already exists
@@ -71,10 +70,8 @@ module.exports = function (db) {
             Password: hashedPassword, // Store the hashed password
             Email,
             Mobilenumber,
-            Position,
           },
           token,
-          Status: "Inactive", // Set initial status to Inactive
           LastLogin: null, // Placeholder for last login
           LastLogout: null, // Placeholder for last logout
         });
@@ -126,15 +123,17 @@ module.exports = function (db) {
         return res.status(401).json({ message: "Invalid credentials." });
       }
 
-      // Update the user's status and last login timestamp
+      // Update the user's last login timestamp
       const loginTimestamp = new Date().toISOString();
+      const token = jwt.sign({ Username }, secretKey, { expiresIn: "1h" });
+
       await userSnapshot.docs[0].ref.update({
-        Status: "Active",
         LastLogin: loginTimestamp,
+        token,
       });
 
       // Return the token for the logged-in user
-      res.json({ token: userData.token });
+      res.json({ token });
     } catch (error) {
       console.error("Error logging in:", error);
       res.status(500).json({ message: "Failed to log in.", error });
@@ -229,51 +228,6 @@ module.exports = function (db) {
       res.json({ message: "Admin deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Error deleting Admin", error });
-    }
-  });
-
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  // Scheduled Task to Check Inactive Users
-  cron.schedule("0 0 * * *", async () => {
-    // This will run every day at midnight
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6); // Set to 6 months ago
-
-    try {
-      const snapshot = await db.collection("Admins").get();
-      const inactiveUsers = [];
-
-      snapshot.forEach((doc) => {
-        const userData = doc.data();
-        const lastLoginDate = userData.LastLogin
-          ? new Date(userData.LastLogin)
-          : null;
-
-        // Check if the account has been inactive for more than 6 months
-        if (
-          lastLoginDate &&
-          lastLoginDate < sixMonthsAgo &&
-          userData.Status === "Active"
-        ) {
-          inactiveUsers.push(doc.id); // Add to the list for status update
-        }
-      });
-
-      // Update inactive users' status to Inactive
-      for (const userId of inactiveUsers) {
-        await db
-          .collection("Admins")
-          .doc(userId)
-          .update({ Status: "Inactive" });
-        console.log(`Updated user with ID: ${userId} to Inactive status.`);
-      }
-
-      console.log(
-        `Checked for inactive accounts. Updated ${inactiveUsers.length} users to Inactive status.`
-      );
-    } catch (error) {
-      console.error("Error checking inactive accounts:", error);
     }
   });
 
