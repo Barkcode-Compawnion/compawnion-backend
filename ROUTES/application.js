@@ -165,8 +165,22 @@ module.exports = function (db) {
       const appRef = db.collection("Application").doc(appId);
       const updatedData = req.body;
 
+      // Update the application document
       await appRef.update(updatedData);
-      res.json({ message: "Application updated successfully" });
+
+      // Get the updated application data to regenerate PDF
+      const updatedDoc = await appRef.get();
+      const updatedApplicationData = updatedDoc.data();
+
+      // Generate the new PDF
+      try {
+        const pdfPath = await generateAndSavePDF(updatedApplicationData);
+        console.log(`Updated PDF generated at: ${pdfPath}`);
+      } catch (pdfError) {
+        console.error("Error generating updated PDF:", pdfError);
+      }
+
+      res.json({ message: "Application updated successfully", pdfPath });
     } catch (error) {
       console.error("Error updating application:", error);
       res.status(500).json({ message: "Error updating application", error });
