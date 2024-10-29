@@ -42,22 +42,25 @@ module.exports = function (db) {
     try {
       const {
         personal: {
-        picture,
-        name,
-        type,
+          picture,
+          name,
+          type,
           age: { month, year },
-        breed,
-        weight,
-        size,
-        gender,
+          breed,
+          weight,
+          size,
+          gender,
         },
         background: {
-        personality,
-        backgroundStory,
-        vaccination:{vaccinationDate, vaccinationExp},
-        medicalHistory: {medicalDate, medicalCert},
+          personality,
+          backgroundStory,
+          vaccination: { vaccinationDate, vaccinationExp },
+          medicalHistory: { medicalDate, medicalCert },
+          rescueDate,
+          adoptionDate,
+          Status,
         },
-        rfid
+        rfid,
       } = petData; // Use petData directly
 
       console.log("Received data:", petData); // Log received data
@@ -69,7 +72,10 @@ module.exports = function (db) {
       const formattedPetId = petId.toString().padStart(3, "0");
 
       // Add the new pet document with the auto-incremented Pet ID as the document ID
-      await db.collection("RescuedAnimals").doc(formattedPetId).set({
+      await db
+        .collection("RescuedAnimals")
+        .doc(formattedPetId)
+        .set({
           // Spread the petData to include everything except petId
           ...petData,
           // Optionally, log the formattedPetId for internal tracking if needed
@@ -78,13 +84,16 @@ module.exports = function (db) {
       console.log(`Document added with Pet ID: ${formattedPetId}`);
 
       // Respond with success after adding the pet
-      return res.status(200).send({ message: `Pet added with ID: ${formattedPetId}` });
+      return res
+        .status(200)
+        .send({ message: `Pet added with ID: ${formattedPetId}` });
     } catch (error) {
       console.error("Error adding new pet:", error);
-      return res.status(500).send({ message: "Failed to add new pet.", error: error.message });
+      return res
+        .status(500)
+        .send({ message: "Failed to add new pet.", error: error.message });
     }
   });
-
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ra.get("/", async (req, res) => {
