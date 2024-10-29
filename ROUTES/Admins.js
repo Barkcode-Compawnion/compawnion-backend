@@ -113,6 +113,7 @@ module.exports = function (db) {
       // Get the user data
       const userData = userSnapshot.docs[0].data();
 
+
       // Compare the provided password with the hashed password stored in Firestore
       const isMatch = await bcrypt.compare(
         Password,
@@ -186,6 +187,40 @@ module.exports = function (db) {
       res.status(500).json({ message: "Error retrieving Admins", error });
     }
   });
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Get My Profile
+
+  Admins.get("/me", async (req, res) => {
+    const { authorization } = req.headers;
+    console.log(req.headers);
+
+    if (!authorization) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const token = authorization.split(" ")[1];
+    console.log(token);
+
+    try {
+      const decoded = jwt.verify(token, secretKey);
+      const userSnapshot = await db
+        .collection("Admins")
+        .where("aStaffInfo.Username", "==", decoded.Username)
+        .get();
+
+      if (userSnapshot.empty) {
+        return res.status(404).json({ message: "User not found." });
+      }
+
+      const userData = userSnapshot.docs[0].data();
+      res.json({ id: userSnapshot.docs[0].id, ...userData });
+    } catch (error) {
+      res.status(500).json({ message: "Error retrieving profile", error });
+    }
+  });
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   // Read a specific Admin by ID
   Admins.get("/:id", async (req, res) => {
