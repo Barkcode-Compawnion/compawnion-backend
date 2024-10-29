@@ -1,4 +1,8 @@
 const express = require("express");
+const fs = require("fs");
+const path = require("path");
+const { generateAndSavePDF } = require("./pdfcontract"); // Import the PDF function
+
 const application = express.Router();
 
 module.exports = function (db) {
@@ -35,7 +39,7 @@ module.exports = function (db) {
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  
+
   // POST route to add a new application
   application.post("/", async (req, res) => {
     const appData = req.body; // Get the incoming data
@@ -124,13 +128,28 @@ module.exports = function (db) {
       };
 
       // Add the new application document with the auto-incremented Application ID as the document ID
-      await db.collection("Application").doc(formattedAppId).set(newApplication);
+      await db
+        .collection("Application")
+        .doc(formattedAppId)
+        .set(newApplication);
+
+      // Generate the PDF after saving the application
+      try {
+        const pdfPath = await generateAndSavePDF(newApplication);
+        console.log(`PDF generated at: ${pdfPath}`);
+      } catch (pdfError) {
+        console.error("Error generating PDF:", pdfError);
+      }
 
       console.log(`Document added with Application ID: ${formattedAppId}`);
-      return res.status(201).send({ message: `Application added with ID: ${formattedAppId}` });
+      return res
+        .status(201)
+        .send({ message: `Application added with ID: ${formattedAppId}` });
     } catch (error) {
       console.error("Error occurred while processing the request:", error);
-      return res.status(500).json({ message: "Error adding an application", error: error.message });
+      return res
+        .status(500)
+        .json({ message: "Error adding an application", error: error.message });
     }
   });
 
@@ -140,7 +159,10 @@ module.exports = function (db) {
   application.get("/", async (req, res) => {
     try {
       const snapshot = await db.collection("Application").get();
-      const applications = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const applications = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
       res.json(applications);
     } catch (error) {
       console.error("Error retrieving applications:", error);
