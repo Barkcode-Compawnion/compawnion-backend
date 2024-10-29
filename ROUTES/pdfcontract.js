@@ -1,12 +1,12 @@
 const express = require("express");
-const { PDFDocument, rgb } = require("pdf-lib");
+const {PDFDocument} = require("pdf-lib");
 const fs = require("fs");
 const path = require("path");
 
 const pdfContract = express.Router();
 
 /**
- * Generates a PDF for the given application data.
+ * Generates a PDF contract for the given application data.
  * @param {Object} applicationData - The application data to include in the PDF.
  * @returns {Promise<Buffer>} - The generated PDF as a byte buffer.
  */
@@ -17,16 +17,23 @@ async function generatePDF(applicationData) {
   const { applicant, applicationAppId, applicationType } = applicationData;
 
   // Prepare text content for the PDF
-  const title = `Application ID: ${applicationAppId}`;
+  const title = `Contract Agreement for Application ID: ${applicationAppId}`;
   const name = `Name: ${applicant.firstName} ${applicant.middleName} ${applicant.lastName}`;
   const type = `Application Type: ${applicationType}`;
   const email = `Email: ${applicant.contactInfo.emailAddress}`;
+  const terms = `This contract confirms the application for ${applicationType}. 
+  The applicant agrees to abide by the terms stated herein.`;
 
   // Draw text on the PDF
   page.drawText(title, { x: 50, y: 750, size: 20, color: rgb(0, 0, 0) });
   page.drawText(name, { x: 50, y: 700, size: 15 });
   page.drawText(type, { x: 50, y: 670, size: 15 });
   page.drawText(email, { x: 50, y: 640, size: 15 });
+  page.drawText(terms, { x: 50, y: 600, size: 12, lineHeight: 15 });
+
+  // Additional contract details can be added as needed
+  // For example, adding a signature line:
+  page.drawText("Signature: _____________________", { x: 50, y: 550, size: 15 });
 
   // Serialize the PDF to bytes
   const pdfBytes = await pdfDoc.save();
@@ -34,19 +41,19 @@ async function generatePDF(applicationData) {
 }
 
 /**
- * Generates and saves a PDF locally.
+ * Generates and saves a PDF contract locally.
  * @param {Object} applicationData - The application data to include in the PDF.
  * @returns {Promise<string>} - The file path of the saved PDF.
  */
 async function generateAndSavePDF(applicationData) {
   const pdfBytes = await generatePDF(applicationData);
 
-  const pdfPath = path.join(__dirname, `application_${applicationData.applicationAppId}.pdf`);
+  const pdfPath = path.join(__dirname, `contract_application_${applicationData.applicationAppId}.pdf`);
   fs.writeFileSync(pdfPath, pdfBytes); // Save the PDF locally
   return pdfPath;
 }
 
-// Route to generate a PDF (for testing purposes)
+// Route to generate a PDF contract
 pdfContract.post("/generate", async (req, res) => {
   const applicationData = req.body; // Expecting application data in the request body
 
