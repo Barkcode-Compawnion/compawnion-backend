@@ -1,7 +1,35 @@
 const express = require("express");
+const { PDFDocument, rgb } = require("pdf-lib"); // Import pdf-lib
+const fs = require("fs"); // For saving PDFs locally (if needed)
+const path = require("path"); // To manage file paths
+
 const application = express.Router();
 
 module.exports = function (db) {
+  // Function to generate a PDF for an application
+  async function generateApplicationPDF(applicationData) {
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([600, 800]);
+
+    const { applicant, applicationAppId, applicationType } = applicationData;
+
+    const title = `Application ID: ${applicationAppId}`;
+    const name = `Name: ${applicant.firstName} ${applicant.middleName} ${applicant.lastName}`;
+    const type = `Application Type: ${applicationType}`;
+    const email = `Email: ${applicant.contactInfo.emailAddress}`;
+
+    // Add content to the PDF
+    page.drawText(title, { x: 50, y: 750, size: 20, color: rgb(0, 0, 0) });
+    page.drawText(name, { x: 50, y: 700, size: 15 });
+    page.drawText(type, { x: 50, y: 670, size: 15 });
+    page.drawText(email, { x: 50, y: 640, size: 15 });
+
+    // Serialize the PDF to bytes
+    const pdfBytes = await pdfDoc.save();
+    return pdfBytes;
+  }
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   // Function to get and increment the next Application ID atomically
   async function getNextAppId() {
     const counterRef = db.collection("Counter").doc("AppIDCounter");
@@ -35,7 +63,7 @@ module.exports = function (db) {
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  
+
   // POST route to add a new application
   application.post("/", async (req, res) => {
     const appData = req.body; // Get the incoming data
@@ -124,15 +152,25 @@ module.exports = function (db) {
       };
 
       // Add the new application document with the auto-incremented Application ID as the document ID
-      await db.collection("Application").doc(formattedAppId).set(newApplication);
+      await db
+        .collection("Application")
+        .doc(formattedAppId)
+        .set(newApplication);
 
       console.log(`Document added with Application ID: ${formattedAppId}`);
-      return res.status(201).send({ message: `Application added with ID: ${formattedAppId}` });
+      return res
+        .status(201)
+        .send({ message: `Application added with ID: ${formattedAppId}` });
     } catch (error) {
       console.error("Error occurred while processing the request:", error);
-      return res.status(500).json({ message: "Error adding an application", error: error.message });
+      return res
+        .status(500)
+        .json({ message: "Error adding an application", error: error.message });
     }
   });
+
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -140,7 +178,10 @@ module.exports = function (db) {
   application.get("/", async (req, res) => {
     try {
       const snapshot = await db.collection("Application").get();
-      const applications = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const applications = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
       res.json(applications);
     } catch (error) {
       console.error("Error retrieving applications:", error);
