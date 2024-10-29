@@ -1,4 +1,6 @@
 const express = require("express");
+const fs = require("fs");
+const path = require("path");
 const { generateAndSavePDF } = require("./pdfcontract"); // Import the PDF function
 
 const application = express.Router();
@@ -36,13 +38,12 @@ module.exports = function (db) {
     }
   }
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
   // POST route to add a new application
   application.post("/", async (req, res) => {
     const appData = req.body; // Get the incoming data
 
     try {
+      // Destructure and log application data
       const {
         applicationType,
         agreement,
@@ -59,24 +60,7 @@ module.exports = function (db) {
           dwellingType,
         },
         veterinaryClinicName,
-        applicant: {
-          firstName,
-          middleName,
-          lastName,
-          birthdate,
-          occupation,
-          contactInfo: {
-            country,
-            emailAddress,
-            cityMunicipality,
-            address,
-            phoneNumber,
-            province,
-            baranggay,
-            socialMediaLinks: { facebook, instagram },
-          },
-          validId,
-        },
+        applicant,
       } = appData;
 
       console.log("Received data:", appData); // Log received data
@@ -84,7 +68,7 @@ module.exports = function (db) {
       // Get the next auto-incremented Application ID
       const appId = await getNextAppId();
 
-      // Format the Application ID to include leading zeros (e.g., 000-001)
+      // Format the Application ID to include leading zeros (e.g., 001)
       const formattedAppId = appId.toString().padStart(3, "0");
 
       // Create the new application object
@@ -105,24 +89,7 @@ module.exports = function (db) {
           dwellingType,
         },
         veterinaryClinicName,
-        applicant: {
-          firstName,
-          middleName,
-          lastName,
-          birthdate,
-          occupation,
-          contactInfo: {
-            country,
-            emailAddress,
-            cityMunicipality,
-            address,
-            phoneNumber,
-            province,
-            baranggay,
-            socialMediaLinks: { facebook, instagram },
-          },
-          validId,
-        },
+        applicant,
       };
 
       // Add the new application document with the auto-incremented Application ID as the document ID
@@ -137,6 +104,9 @@ module.exports = function (db) {
         console.log(`PDF generated at: ${pdfPath}`);
       } catch (pdfError) {
         console.error("Error generating PDF:", pdfError);
+        return res
+          .status(500)
+          .json({ message: "Error generating PDF", error: pdfError.message });
       }
 
       console.log(`Document added with Application ID: ${formattedAppId}`);
