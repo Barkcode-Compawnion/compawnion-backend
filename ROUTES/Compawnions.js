@@ -41,9 +41,6 @@ module.exports = function (db) {
       UserPassword,
       UserEmail,
       UserPhone,
-      UserBday,
-      UserAge,
-      UserAddress,
       UserPetID,
       UserApplication,
     } = req.body;
@@ -76,9 +73,6 @@ module.exports = function (db) {
             Password: hashedPassword, // Store the hashed password
             UserEmail,
             UserPhone,
-            UserBday,
-            UserAge,
-            UserAddress,
             UserPetID,
             UserApplication,
           },
