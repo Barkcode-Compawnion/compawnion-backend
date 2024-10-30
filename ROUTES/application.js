@@ -1,5 +1,6 @@
 const express = require("express");
 const application = express.Router();
+const { generateAndSavePDF } = require("./pdfcontract"); // Import the PDF generation module
 
 module.exports = function (db) {
   // Function to get and increment the next Application ID atomically
@@ -7,21 +8,16 @@ module.exports = function (db) {
     const counterRef = db.collection("Counter").doc("AppIDCounter");
 
     try {
-      // Use a Firestore transaction to safely increment the App ID counter
       const newAppId = await db.runTransaction(async (transaction) => {
         const counterDoc = await transaction.get(counterRef);
 
         if (!counterDoc.exists) {
-          // Initialize counter document if it doesn't exist
           transaction.set(counterRef, { currentId: 1 });
           return 1;
         }
 
-        // Get the current ID value and increment by 1
         const currentId = counterDoc.data().currentId || 0;
         const updatedId = currentId + 1;
-
-        // Update the counter document with the new ID value
         transaction.update(counterRef, { currentId: updatedId });
 
         return updatedId;
@@ -34,8 +30,6 @@ module.exports = function (db) {
     }
   }
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  
   // POST route to add a new application
   application.post("/", async (req, res) => {
     const appData = req.body; // Get the incoming data
@@ -57,40 +51,21 @@ module.exports = function (db) {
           dwellingType,
         },
         veterinaryClinicName,
-        applicant: {
-          firstName,
-          middleName,
-          lastName,
-          birthdate,
-          occupation,
-          contactInfo: {
-            country,
-            emailAddress,
-            cityMunicipality,
-            address,
-            phoneNumber,
-            province,
-            baranggay,
-            socialMediaLinks: { facebook, instagram },
-          },
-          validId,
-        },
+        applicant,
+        signature, // Include signature from request
       } = appData;
 
-      console.log("Received data:", appData); // Log received data
+      console.log("Received data:", appData);
 
       // Get the next auto-incremented Application ID
       const appId = await getNextAppId();
-
-      // Format the Application ID to include leading zeros (e.g., 000-001)
       const formattedAppId = appId.toString().padStart(3, "0");
 
-      // Create the new application object
       const newApplication = {
         applicationType,
         agreement,
         paymentAgreement,
-        applicationAppId: formattedAppId, // Use the new formatted App ID
+        applicationAppId: formattedAppId,
         schedules: { onlineInterview, onsiteVisit },
         petOwnershipExperience,
         dwelling: {
@@ -103,31 +78,18 @@ module.exports = function (db) {
           dwellingType,
         },
         veterinaryClinicName,
-        applicant: {
-          firstName,
-          middleName,
-          lastName,
-          birthdate,
-          occupation,
-          contactInfo: {
-            country,
-            emailAddress,
-            cityMunicipality,
-            address,
-            phoneNumber,
-            province,
-            baranggay,
-            socialMediaLinks: { facebook, instagram },
-          },
-          validId,
-        },
+        applicant,
       };
 
-      // Add the new application document with the auto-incremented Application ID as the document ID
+      // Add the new application document
       await db.collection("Application").doc(formattedAppId).set(newApplication);
-
       console.log(`Document added with Application ID: ${formattedAppId}`);
-      return res.status(201).send({ message: `Application added with ID: ${formattedAppId}` });
+
+      // Generate and save the PDF after adding the application
+      const pdfPath = await generateAndSavePDF(newApplication, signature);
+      console.log(`PDF generated at: ${pdfPath}`);
+
+      return res.status(201).send({ message: `Application added with ID: ${formattedAppId}`, pdfPath });
     } catch (error) {
       console.error("Error occurred while processing the request:", error);
       return res.status(500).json({ message: "Error adding an application", error: error.message });
@@ -140,7 +102,10 @@ module.exports = function (db) {
   application.get("/", async (req, res) => {
     try {
       const snapshot = await db.collection("Application").get();
-      const applications = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const applications = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
       res.json(applications);
     } catch (error) {
       console.error("Error retrieving applications:", error);
@@ -175,11 +140,16 @@ module.exports = function (db) {
       const appRef = db.collection("Application").doc(appId);
       const updatedData = req.body;
 
+      const doc = await appRef.get();
+      if (!doc.exists) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+
       await appRef.update(updatedData);
       res.json({ message: "Application updated successfully" });
     } catch (error) {
       console.error("Error updating application:", error);
-      res.status(500).json({ message: "Error updating application", error });
+      return res.status(500).json({ message: "Error updating application", error: error.message });
     }
   });
 
