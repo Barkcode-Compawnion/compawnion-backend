@@ -1,8 +1,4 @@
 const express = require("express");
-const fs = require("fs");
-const path = require("path");
-const { generateAndSavePDF } = require("./pdfcontract"); // Import the PDF function
-
 const application = express.Router();
 
 module.exports = function (db) {
@@ -98,17 +94,6 @@ module.exports = function (db) {
         .doc(formattedAppId)
         .set(newApplication);
 
-      // Generate the PDF after saving the application
-      try {
-        const pdfPath = await generateAndSavePDF(newApplication);
-        console.log(`PDF generated at: ${pdfPath}`);
-      } catch (pdfError) {
-        console.error("Error generating PDF:", pdfError);
-        return res
-          .status(500)
-          .json({ message: "Error generating PDF", error: pdfError.message });
-      }
-
       console.log(`Document added with Application ID: ${formattedAppId}`);
       return res
         .status(201)
@@ -174,15 +159,7 @@ module.exports = function (db) {
       // Update the application document
       await appRef.update(updatedData);
 
-      // Get the updated application data to regenerate PDF
-      const updatedDoc = await appRef.get();
-      const updatedApplicationData = updatedDoc.data();
-
-      // Generate the new PDF
-      const pdfPath = await generateAndSavePDF(updatedApplicationData);
-      console.log(`Updated PDF generated at: ${pdfPath}`);
-
-      res.json({ message: "Application updated successfully", pdfPath });
+      res.json({ message: "Application updated successfully" });
     } catch (error) {
       console.error("Error updating application:", error);
       return res
