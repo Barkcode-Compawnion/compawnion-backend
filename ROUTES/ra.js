@@ -60,7 +60,7 @@ module.exports = function (db) {
           adoptionDate,
           Status,
         },
-        rfid,
+        rfid
       } = petData; // Use petData directly
 
       console.log("Received data:", petData); // Log received data
@@ -78,6 +78,7 @@ module.exports = function (db) {
         .set({
           // Spread the petData to include everything except petId
           ...petData,
+          petId: formattedPetId
           // Optionally, log the formattedPetId for internal tracking if needed
         });
 
