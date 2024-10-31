@@ -21,8 +21,9 @@ admin.initializeApp({
 
 // Get reference to Firestore
 const db = admin.firestore();
+
 // Get reference to Firebase Storage
-const storage = admin.storage().bucket();
+const storage = admin.storage().bucket('gs://compawnion-fbb5a.appspot.com');
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
