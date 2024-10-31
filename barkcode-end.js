@@ -22,6 +22,9 @@ admin.initializeApp({
 // Get reference to Firestore
 const db = admin.firestore();
 
+// Get reference to Firebase Storage
+const storage = admin.storage().bucket('gs://compawnion-fbb5a.appspot.com');
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // MIDDLEWARES
@@ -44,18 +47,19 @@ app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  console.log(`${req.method} "${req.path}" from ${req.ip}`);
   next();
 });
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // ROUTES
 
-const adminRoute = require("./ROUTES/Admins")(db);
-const applicationRoute = require("./ROUTES/application")(db);
-const compawnionRoute = require("./ROUTES/Compawnions")(db);
-const raRoute = require("./ROUTES/ra")(db);
-const superadminRoute = require("./ROUTES/superadmin")(db);
-const adoptedAnimalsRoute = require("./ROUTES/adoptedAnimals")(db);
+const adminRoute = require("./ROUTES/Admins")(db, storage);
+const applicationRoute = require("./ROUTES/application")(db, storage);
+const compawnionRoute = require("./ROUTES/Compawnions")(db, storage);
+const raRoute = require("./ROUTES/ra")(db, storage);
+const superadminRoute = require("./ROUTES/superadmin")(db, storage);
+const adoptedAnimalsRoute = require("./ROUTES/adoptedAnimals")(db, storage);
 
 app.use("/Admins", adminRoute);
 app.use("/application", applicationRoute);
@@ -68,6 +72,24 @@ app.use("/adoptedAnimals", adoptedAnimalsRoute);
 app.get("/", (req, res) => {
   res.json({ message: "Welcome to BarkCode API using Node.js and Express!" });
 });
+
+// Media routes
+const mediaRoutes = [
+  'Admins',
+  'pets'
+];
+for (const route of mediaRoutes) {
+  app.get(`/media/${route}/:id`, (req, res) => {
+    const { id } = req.params;
+    const file = storage.file(`${route}/${id}`);
+    file.createReadStream()
+      .on('error', (err) => {
+        console.error(err);
+        res.status(404).json({ message: "File not found." });
+      })
+      .pipe(res);
+  });
+};
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

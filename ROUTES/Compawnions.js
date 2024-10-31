@@ -5,7 +5,12 @@ const Compawnions = express.Router();
 
 const secretKey = "sikretolangto"; // Replace with your secret key
 
-module.exports = function (db) {
+/**
+ * @param {import('firebase-admin/firestore').Firestore} db
+ * @param {import('@google-cloud/storage').Bucket} storage
+ * @returns {express.Router}
+ */
+module.exports = function (db, storage) {
   async function getNextCompId() {
     const counterRef = db.collection("Counter").doc("CompIDCounter");
 

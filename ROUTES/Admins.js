@@ -6,7 +6,12 @@ const Admins = express.Router();
 
 const secretKey = "sikretolangto"; // Replace with your secret key
 
-module.exports = function (db) {
+/**
+ * @param {import('firebase-admin/firestore').Firestore} db
+ * @param {import('@google-cloud/storage').Bucket} storage
+ * @returns {express.Router}
+ */
+module.exports = function (db, storage) {
   // Function to get and increment the next Admin ID automatically
   async function getNextAdminId() {
     const counterRef = db.collection("Counter").doc("AdminIDCounter");
@@ -38,7 +43,31 @@ module.exports = function (db) {
   // Create Admin
 
   Admins.post("/register", async (req, res) => {
-    const { Name, Picture, Username, Password, Email, Mobilenumber, Branches } = req.body;
+    const { Name, Picture: Image, Username, Password, Email, Mobilenumber, Branches } = req.body;
+
+    // Check if all required fields are provided
+    if (!Name || !Username || !Password || !Email || !Mobilenumber || !Branches) {
+      return res.status(400).json({ message: "All fields are required." });
+    };
+
+    // Translate Image into blob
+    let Picture = null;
+    if (Image) {
+      try {
+        // Create a buffer from the base64 string
+        const type = Image.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)[1];
+        const data = Image.replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(data, "base64");
+
+        // Upload the image to Firebase Storage
+        const file = storage.file(`Admins/${Username}.${type.split("/")[1]}`);
+        await file.save(buffer, { contentType: type });
+        Picture = `http://localhost:3000/media/Admins/${Username}.${type.split("/")[1]}`;
+      } catch (error) {
+        console.error("Error uploading image:", error);
+        return res.status(500).json({ message: "Failed to upload image." });
+      }
+    };
 
     try {
       // Check if the username already exists
@@ -246,6 +275,32 @@ module.exports = function (db) {
       const userId = req.params.id;
       const userRef = db.collection("Admins").doc(userId);
       const updatedUser = req.body;
+
+      // !!!!!!!!!!!!!!!!!!!!! UNTESTED CODE !!!!!!!!!!!!!!!!!!!!!
+      // Get Image from the request body
+      const { Picture: Image } = req.body;
+
+      // Translate Image into blob
+      let Picture = null;
+      if (Image) {
+        try {
+          // Create a buffer from the base64 string
+          const type = Image.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)[1];
+          const data = Image.replace(/^data:image\/\w+;base64,/, "");
+          const buffer = Buffer.from(data, "base64");
+
+          // Upload the image to Firebase Storage
+          const file = storage.file(`Admins/${userId}.${type.split("/")[1]}`);
+          await file.save(buffer, { contentType: type });
+          Picture = `http://localhost:3000/media/Admins/${userId}.${type.split("/")[1]}`;
+        } catch (error) {
+          console.error("Error uploading image:", error);
+          return res.status(500).json({ message: "Failed to upload image." });
+        }
+      };
+      updatedUser.aStaffInfo.Picture = Picture;
+      // !!!!!!!!!!!!!!!!!!!!! UNTESTED CODE !!!!!!!!!!!!!!!!!!!!!
+
       await userRef.update(updatedUser);
       res.json({ message: "Admin updated successfully" });
     } catch (error) {
@@ -260,6 +315,16 @@ module.exports = function (db) {
     try {
       const userId = req.params.id;
       const userRef = db.collection("Admins").doc(userId);
+
+      // Delete the image from Firebase Storage
+      const doc = await userRef.get();
+      const { Picture } = doc.data().aStaffInfo;
+      if (Picture) {
+        const filename = Picture.split("/").slice(-1)[0];
+        const file = storage.file(`Admins/${filename}`);
+        await file.delete();
+      };
+
       await userRef.delete();
       res.json({ message: "Admin deleted successfully" });
     } catch (error) {

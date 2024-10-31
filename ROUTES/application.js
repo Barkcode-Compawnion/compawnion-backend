@@ -2,7 +2,12 @@ const express = require("express");
 const application = express.Router();
 const { generateAndSavePDF } = require("./pdfcontract"); // Import the PDF generation module
 
-module.exports = function (db) {
+/**
+ * @param {import('firebase-admin/firestore').Firestore} db
+ * @param {import('@google-cloud/storage').Bucket} storage
+ * @returns {express.Router}
+ */
+module.exports = function (db, storage) {
   // Function to get and increment the next Application ID atomically
   async function getNextAppId() {
     const counterRef = db.collection("Counter").doc("AppIDCounter");

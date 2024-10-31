@@ -1,7 +1,12 @@
 const express = require("express");
 const adoptedAnimals = express.Router();
 
-module.exports = function (db) {
+/**
+ * @param {import('firebase-admin/firestore').Firestore} db
+ * @param {import('@google-cloud/storage').Bucket} storage
+ * @returns {express.Router}
+ */
+module.exports = function (db, storage) {
   adoptedAnimals.get("/", async (req, res) => {
     try {
       const snapshot = await db.collection("AdoptedAnimals").get();
