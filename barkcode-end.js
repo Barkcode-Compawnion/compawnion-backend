@@ -27,13 +27,17 @@ const db = admin.firestore();
 // MIDDLEWARES
 
 // Middleware to parse JSON bodies
-app.use(express.json({
-  limit: "50mb",
-}));
-app.use(express.urlencoded({
-  extended: true,
-  limit: "50mb",
-}));
+app.use(
+  express.json({
+    limit: "50mb",
+  })
+);
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: "50mb",
+  })
+);
 
 // Cors Middleware
 app.use((req, res, next) => {
@@ -51,12 +55,14 @@ const applicationRoute = require("./ROUTES/application")(db);
 const compawnionRoute = require("./ROUTES/Compawnions")(db);
 const raRoute = require("./ROUTES/ra")(db);
 const superadminRoute = require("./ROUTES/superadmin")(db);
+const adoptedAnimalsRoute = require("./ROUTES/adoptedAnimals")(db);
 
 app.use("/Admins", adminRoute);
 app.use("/application", applicationRoute);
 app.use("/Compawnions", compawnionRoute);
 app.use("/ra", raRoute);
 app.use("/superadmin", superadminRoute);
+app.use("/adoptedAnimals", adoptedAnimalsRoute);
 
 // Root route
 app.get("/", (req, res) => {
