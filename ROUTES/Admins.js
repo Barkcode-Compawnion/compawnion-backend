@@ -276,6 +276,7 @@ module.exports = function (db, storage) {
       const userRef = db.collection("Admins").doc(userId);
       const updatedUser = req.body;
 
+      // !!!!!!!!!!!!!!!!!!!!! UNTESTED CODE !!!!!!!!!!!!!!!!!!!!!
       // Get Image from the request body
       const { Picture: Image } = req.body;
 
@@ -298,6 +299,7 @@ module.exports = function (db, storage) {
         }
       };
       updatedUser.aStaffInfo.Picture = Picture;
+      // !!!!!!!!!!!!!!!!!!!!! UNTESTED CODE !!!!!!!!!!!!!!!!!!!!!
 
       await userRef.update(updatedUser);
       res.json({ message: "Admin updated successfully" });
