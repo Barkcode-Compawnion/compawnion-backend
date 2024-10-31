@@ -37,7 +37,7 @@ module.exports = function (db) {
   // Register Companion
   Compawnions.post("/register", async (req, res) => {
     const {
-      accountCreate: { Username, Email, Phone, Password },
+      accountCreate: { Username, Email, Phone, Password, Verify },
       MedSched: { SchedTitle, SchedDate, SchedTime, SchedVetClinic, SchedPet },
       TrustedVet: { TVVetClinic, TVAddress },
       CompawnionSched: { EventTitle, CSDate, CSTime, GmeetRoom },
@@ -70,7 +70,7 @@ module.exports = function (db) {
         .doc(formattedCompId)
         .set({
           CompawnionUser: {
-            accountCreate: { Username, Email, Phone, Password: hashedPassword }, // Ensure Password is hashed
+            accountCreate: { Username, Email, Phone, Password: hashedPassword, Verify }, // Ensure Password is hashed
             MedSched: {
               SchedTitle,
               SchedDate,
