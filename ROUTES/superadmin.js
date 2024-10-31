@@ -4,7 +4,12 @@ const jwt = require("jsonwebtoken");
 const Superadmins = express.Router();
 const secretKey = "sikretolangto"; // Store in environment variables
 
-module.exports = function (db) {
+/**
+ * @param {import('firebase-admin/firestore').Firestore} db
+ * @param {import('@google-cloud/storage').Bucket} storage
+ * @returns {express.Router}
+ */
+module.exports = function (db, storage) {
   // Login route for superadmin
   Superadmins.post("/login", async (req, res) => {
     const { Password } = req.body; // Only password input

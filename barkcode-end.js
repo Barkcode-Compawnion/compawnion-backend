@@ -48,11 +48,11 @@ app.use((req, res, next) => {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // ROUTES
 
-const adminRoute = require("./ROUTES/Admins")(db);
-const applicationRoute = require("./ROUTES/application")(db);
-const compawnionRoute = require("./ROUTES/Compawnions")(db);
-const raRoute = require("./ROUTES/ra")(db);
-const superadminRoute = require("./ROUTES/superadmin")(db);
+const adminRoute = require("./ROUTES/Admins")(db, storage);
+const applicationRoute = require("./ROUTES/application")(db, storage);
+const compawnionRoute = require("./ROUTES/Compawnions")(db, storage);
+const raRoute = require("./ROUTES/ra")(db, storage);
+const superadminRoute = require("./ROUTES/superadmin")(db, storage);
 
 app.use("/Admins", adminRoute);
 app.use("/application", applicationRoute);

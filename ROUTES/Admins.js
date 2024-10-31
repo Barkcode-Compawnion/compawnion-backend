@@ -6,7 +6,12 @@ const Admins = express.Router();
 
 const secretKey = "sikretolangto"; // Replace with your secret key
 
-module.exports = function (db) {
+/**
+ * @param {import('firebase-admin/firestore').Firestore} db
+ * @param {import('@google-cloud/storage').Bucket} storage
+ * @returns {express.Router}
+ */
+module.exports = function (db, storage) {
   // Function to get and increment the next Admin ID automatically
   async function getNextAdminId() {
     const counterRef = db.collection("Counter").doc("AdminIDCounter");
