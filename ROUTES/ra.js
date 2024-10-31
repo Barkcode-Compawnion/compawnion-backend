@@ -102,6 +102,38 @@ module.exports = function (db, storage) {
   });
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // In ra.js
+ra.post("/transfer/:id", async (req, res) => {
+  const petId = req.params.id;
+
+  try {
+      const rescuedRef = db.collection("RescuedAnimals").doc(petId);
+      const doc = await rescuedRef.get();
+
+      if (!doc.exists) {
+          return res.status(404).json({ message: "Pet not found in RescuedAnimals" });
+      }
+
+      // Get the pet data and set it in the AdoptedAnimals collection
+      const petData = doc.data();
+      await db.collection("AdoptedAnimals").doc(petId).set({
+          ...petData,
+          adoptionDate: new Date().toISOString(), // Add adoption date if needed
+          status: "Adopted"
+      });
+
+      // Remove the pet from RescuedAnimals after transfer
+      await rescuedRef.delete();
+
+      res.json({ message: "Pet successfully transferred to AdoptedAnimals" });
+  } catch (error) {
+      console.error("Error transferring pet:", error);
+      res.status(500).json({ message: "Error transferring pet", error });
+  }
+});
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ra.get("/", async (req, res) => {
     try {
       const snapshot = await db.collection("RescuedAnimals").get();

@@ -42,31 +42,32 @@ module.exports = function (db, storage) {
   // Register Companion
   Compawnions.post("/register", async (req, res) => {
     const {
-      UserUsername,
-      UserPassword,
-      UserEmail,
-      UserPhone,
-      UserPetID,
-      UserApplication,
+      accountCreate: { Username, Email, Phone, Password, Verify },
+      MedSched: { SchedTitle, SchedDate, SchedTime, SchedVetClinic, SchedPet },
+      TrustedVet: { TVVetClinic, TVAddress },
+      CompawnionSched: { EventTitle, CSDate, CSTime, GmeetRoom },
     } = req.body;
 
     try {
       // Check if the username already exists
       const existingUserSnapshot = await db
         .collection("Compawnions")
-        .where("CompawnionUser.UserUsername", "==", UserUsername)
+        .where("CompawnionUser.accountCreate.Username", "==", Username)
         .get();
+
       if (!existingUserSnapshot.empty) {
         return res.status(400).json({ message: "Username already exists." });
       }
 
       // Hash the password before storing it
-      const hashedPassword = await bcrypt.hash(UserPassword, 10);
-      const token = jwt.sign({ UserUsername }, secretKey, { expiresIn: "1h" });
+      const hashedPassword = await bcrypt.hash(Password, 10); // Correct variable name to 'Password'
 
       // Call to get the next Companion ID
       const compId = await getNextCompId();
       const formattedCompId = compId.toString().padStart(3, "0");
+
+      // Create token after the user is registered
+      const token = jwt.sign({ Username }, secretKey, { expiresIn: "1h" }); // Use 'Username' instead of 'UserUsername'
 
       // Add the new Companion document
       await db
@@ -74,14 +75,17 @@ module.exports = function (db, storage) {
         .doc(formattedCompId)
         .set({
           CompawnionUser: {
-            UserUsername,
-            Password: hashedPassword, // Store the hashed password
-            UserEmail,
-            UserPhone,
-            UserPetID,
-            UserApplication,
+            accountCreate: { Username, Email, Phone, Password: hashedPassword, Verify }, // Ensure Password is hashed
+            MedSched: {
+              SchedTitle,
+              SchedDate,
+              SchedTime,
+              SchedVetClinic,
+              SchedPet,
+            },
+            TrustedVet: { TVVetClinic, TVAddress },
+            CompawnionSched: { EventTitle, CSDate, CSTime, GmeetRoom },
           },
-          token,
           Status: "Inactive", // Set initial status to Inactive
           LastLogin: null, // Placeholder for last login
           LastLogout: null, // Placeholder for last logout
@@ -89,25 +93,26 @@ module.exports = function (db, storage) {
 
       res.status(201).json({
         message: `Companion registered successfully with ID: ${formattedCompId}`,
-        token,
+        token, // Return token with the response
       });
     } catch (error) {
       console.error("Error registering companion:", error);
       res.status(500).json({ message: "Failed to register companion." });
     }
   });
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   // Login Companion
   Compawnions.post("/login", async (req, res) => {
-    const { UserUsername, UserPassword } = req.body;
+    const { Username, Password } = req.body;
 
     try {
       // Retrieve the user based on the provided username
       const userSnapshot = await db
         .collection("Compawnions")
-        .where("CompawnionUser.UserUsername", "==", UserUsername) // Correct path to the username
+        .where("CompawnionUser.accountCreate.Username", "==", Username) // Correct path to the username
         .get();
 
       // Check if the user exists
@@ -120,7 +125,7 @@ module.exports = function (db, storage) {
 
       // Compare the provided password with the hashed password stored in Firestore
       const isMatch = await bcrypt.compare(
-        UserPassword,
+        Password,
         userData.CompawnionUser.Password
       ); // Adjusted path to Password
 
@@ -147,9 +152,9 @@ module.exports = function (db, storage) {
 
   // Logout Companion
   Compawnions.post("/logout", async (req, res) => {
-    const { UserUsername } = req.body;
+    const { Username } = req.body;
 
-    if (!UserUsername) {
+    if (!Username) {
       return res.status(400).json({ message: "Username is required." });
     }
 
@@ -157,7 +162,7 @@ module.exports = function (db, storage) {
       // Retrieve the user based on the Username
       const userSnapshot = await db
         .collection("Compawnions")
-        .where("CompawnionUser.UserUsername", "==", UserUsername)
+        .where("CompawnionUser.accountCreate.Username", "==", Username)
         .get();
 
       if (userSnapshot.empty) {

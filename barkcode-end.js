@@ -30,13 +30,17 @@ const storage = admin.storage().bucket('gs://compawnion-fbb5a.appspot.com');
 // MIDDLEWARES
 
 // Middleware to parse JSON bodies
-app.use(express.json({
-  limit: "50mb",
-}));
-app.use(express.urlencoded({
-  extended: true,
-  limit: "50mb",
-}));
+app.use(
+  express.json({
+    limit: "50mb",
+  })
+);
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: "50mb",
+  })
+);
 
 // Cors Middleware
 app.use((req, res, next) => {
@@ -61,6 +65,7 @@ app.use("/application", applicationRoute);
 app.use("/Compawnions", compawnionRoute);
 app.use("/ra", raRoute);
 app.use("/superadmin", superadminRoute);
+app.use("/adoptedAnimals", adoptedAnimalsRoute);
 
 // Root route
 app.get("/", (req, res) => {
