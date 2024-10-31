@@ -275,6 +275,30 @@ module.exports = function (db, storage) {
       const userId = req.params.id;
       const userRef = db.collection("Admins").doc(userId);
       const updatedUser = req.body;
+
+      // Get Image from the request body
+      const { Picture: Image } = req.body;
+
+      // Translate Image into blob
+      let Picture = null;
+      if (Image) {
+        try {
+          // Create a buffer from the base64 string
+          const type = Image.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)[1];
+          const data = Image.replace(/^data:image\/\w+;base64,/, "");
+          const buffer = Buffer.from(data, "base64");
+
+          // Upload the image to Firebase Storage
+          const file = storage.file(`Admins/${userId}.${type.split("/")[1]}`);
+          await file.save(buffer, { contentType: type });
+          Picture = `http://localhost:3000/media/Admins/${userId}.${type.split("/")[1]}`;
+        } catch (error) {
+          console.error("Error uploading image:", error);
+          return res.status(500).json({ message: "Failed to upload image." });
+        }
+      };
+      updatedUser.aStaffInfo.Picture = Picture;
+
       await userRef.update(updatedUser);
       res.json({ message: "Admin updated successfully" });
     } catch (error) {
