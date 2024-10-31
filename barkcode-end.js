@@ -21,6 +21,8 @@ admin.initializeApp({
 
 // Get reference to Firestore
 const db = admin.firestore();
+// Get reference to Firebase Storage
+const storage = admin.storage().bucket();
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
