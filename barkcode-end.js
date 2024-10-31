@@ -59,6 +59,7 @@ const applicationRoute = require("./ROUTES/application")(db, storage);
 const compawnionRoute = require("./ROUTES/Compawnions")(db, storage);
 const raRoute = require("./ROUTES/ra")(db, storage);
 const superadminRoute = require("./ROUTES/superadmin")(db, storage);
+const adoptedAnimalsRoute = require("./ROUTES/adoptedAnimals")(db, storage);
 
 app.use("/Admins", adminRoute);
 app.use("/application", applicationRoute);
