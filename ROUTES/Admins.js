@@ -315,6 +315,16 @@ module.exports = function (db, storage) {
     try {
       const userId = req.params.id;
       const userRef = db.collection("Admins").doc(userId);
+
+      // Delete the image from Firebase Storage
+      const doc = await userRef.get();
+      const { Picture } = doc.data().aStaffInfo;
+      if (Picture) {
+        const filename = Picture.split("/").slice(-1)[0];
+        const file = storage.file(`Admins/${filename}`);
+        await file.delete();
+      };
+
       await userRef.delete();
       res.json({ message: "Admin deleted successfully" });
     } catch (error) {
