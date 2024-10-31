@@ -67,6 +67,24 @@ app.get("/", (req, res) => {
   res.json({ message: "Welcome to BarkCode API using Node.js and Express!" });
 });
 
+// Media routes
+const mediaRoutes = [
+  'Admins',
+  'pets'
+];
+for (const route of mediaRoutes) {
+  app.get(`/media/${route}/:id`, (req, res) => {
+    const { id } = req.params;
+    const file = storage.file(`${route}/${id}`);
+    file.createReadStream()
+      .on('error', (err) => {
+        console.error(err);
+        res.status(404).json({ message: "File not found." });
+      })
+      .pipe(res);
+  });
+};
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //WEBSOCKETS

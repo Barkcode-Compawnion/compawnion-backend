@@ -43,7 +43,31 @@ module.exports = function (db, storage) {
   // Create Admin
 
   Admins.post("/register", async (req, res) => {
-    const { Name, Picture, Username, Password, Email, Mobilenumber, Branches } = req.body;
+    const { Name, Picture: Image, Username, Password, Email, Mobilenumber, Branches } = req.body;
+
+    // Check if all required fields are provided
+    if (!Name || !Username || !Password || !Email || !Mobilenumber || !Branches) {
+      return res.status(400).json({ message: "All fields are required." });
+    };
+
+    // Translate Image into blob
+    let Picture = null;
+    if (Image) {
+      try {
+        // Create a buffer from the base64 string
+        const type = Image.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)[1];
+        const data = Image.replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(data, "base64");
+
+        // Upload the image to Firebase Storage
+        const file = storage.file(`Admins/${Username}.${type.split("/")[1]}`);
+        await file.save(buffer, { contentType: type });
+        Picture = `http://localhost:3000/media/Admins/${Username}.${type.split("/")[1]}`;
+      } catch (error) {
+        console.error("Error uploading image:", error);
+        return res.status(500).json({ message: "Failed to upload image." });
+      }
+    };
 
     try {
       // Check if the username already exists
