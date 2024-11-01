@@ -38,14 +38,11 @@ module.exports = function (db, storage) {
   }
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+  // Register Companion (Basic Information)
   // Register Companion
   Compawnions.post("/register", async (req, res) => {
     const {
-      accountCreate: { Username, Email, Phone, Password, Verify },
-      MedSched: { SchedTitle, SchedDate, SchedTime, SchedVetClinic, SchedPet },
-      TrustedVet: { TVVetClinic, TVAddress },
-      CompawnionSched: { EventTitle, CSDate, CSTime, GmeetRoom },
+      accountCreate: { Username, Email, Phone, Password },
     } = req.body;
 
     try {
@@ -60,14 +57,11 @@ module.exports = function (db, storage) {
       }
 
       // Hash the password before storing it
-      const hashedPassword = await bcrypt.hash(Password, 10); // Correct variable name to 'Password'
+      const hashedPassword = await bcrypt.hash(Password, 10);
 
       // Call to get the next Companion ID
       const compId = await getNextCompId();
       const formattedCompId = compId.toString().padStart(3, "0");
-
-      // Create token after the user is registered
-      const token = jwt.sign({ Username }, secretKey, { expiresIn: "1h" }); // Use 'Username' instead of 'UserUsername'
 
       // Add the new Companion document
       await db
@@ -75,29 +69,89 @@ module.exports = function (db, storage) {
         .doc(formattedCompId)
         .set({
           CompawnionUser: {
-            accountCreate: { Username, Email, Phone, Password: hashedPassword, Verify }, // Ensure Password is hashed
-            MedSched: {
-              SchedTitle,
-              SchedDate,
-              SchedTime,
-              SchedVetClinic,
-              SchedPet,
-            },
-            TrustedVet: { TVVetClinic, TVAddress },
-            CompawnionSched: { EventTitle, CSDate, CSTime, GmeetRoom },
+            accountCreate: { Username, Email, Phone, Password: hashedPassword },
+            MedSched: [],
+            TrustedVet: [],
+            CompawnionSched: [],
           },
           Status: "Inactive", // Set initial status to Inactive
-          LastLogin: null, // Placeholder for last login
-          LastLogout: null, // Placeholder for last logout
+          LastLogin: null,
+          LastLogout: null,
         });
 
       res.status(201).json({
         message: `Companion registered successfully with ID: ${formattedCompId}`,
-        token, // Return token with the response
       });
     } catch (error) {
       console.error("Error registering companion:", error);
       res.status(500).json({ message: "Failed to register companion." });
+    }
+  });
+
+  // New route to add details to CompawnionUser
+  Compawnions.post("/addDetails", async (req, res) => {
+    const { Username, MedSched, TrustedVet, CompawnionSched } = req.body;
+
+    // before ka ma-confuse ka eto yung mga attributes sa loob ng mga to:
+
+    //MedSched: { SchedTitle, SchedDate, SchedTime, SchedVetClinic, SchedPet },
+    //TrustedVet: { TVVetClinic, TVAddress },
+    //CompawnionSched: { EventTitle, CSDate, CSTime, GmeetRoom },
+
+    if (!Username) {
+      return res.status(400).json({ message: "Username is required." });
+    }
+
+    try {
+      // Locate companion document by Username
+      const userSnapshot = await db
+        .collection("Compawnions")
+        .where("CompawnionUser.accountCreate.Username", "==", Username)
+        .get();
+
+      if (userSnapshot.empty) {
+        return res.status(404).json({ message: "Companion not found." });
+      }
+
+      const userRef = userSnapshot.docs[0].ref;
+      const userData = userSnapshot.docs[0].data().CompawnionUser;
+
+      // Initialize arrays if they do not exist
+      const medSchedArray = userData.MedSched || [];
+      const trustedVetArray = userData.TrustedVet || [];
+      const compawnionSchedArray = userData.CompawnionSched || [];
+
+      // Update MedSched if provided
+      if (MedSched) {
+        await userRef.update({
+          "CompawnionUser.MedSched": medSchedArray.concat(MedSched),
+        });
+      }
+
+      // Update TrustedVet if provided
+      if (TrustedVet) {
+        await userRef.update({
+          "CompawnionUser.TrustedVet": trustedVetArray.concat(TrustedVet),
+        });
+      }
+
+      // Update CompawnionSched if provided
+      if (CompawnionSched) {
+        await userRef.update({
+          "CompawnionUser.CompawnionSched":
+            compawnionSchedArray.concat(CompawnionSched),
+        });
+      }
+
+      res.json({ message: "Companion details added successfully." });
+    } catch (error) {
+      console.error("Error adding companion details:", error); // Log the error
+      res
+        .status(500)
+        .json({
+          message: "Failed to add companion details.",
+          error: error.message,
+        }); // Include error message in response
     }
   });
 
