@@ -93,6 +93,7 @@ module.exports = function (db, storage) {
     const { Username, MedSched, TrustedVet, CompawnionSched } = req.body;
 
     // before ka ma-confuse ka eto yung mga attributes sa loob ng mga to:
+    // ayan kasi yung mga ica-call mo sa mga textbox etc.
 
     //MedSched: { SchedTitle, SchedDate, SchedTime, SchedVetClinic, SchedPet },
     //TrustedVet: { TVVetClinic, TVAddress },
@@ -146,12 +147,10 @@ module.exports = function (db, storage) {
       res.json({ message: "Companion details added successfully." });
     } catch (error) {
       console.error("Error adding companion details:", error); // Log the error
-      res
-        .status(500)
-        .json({
-          message: "Failed to add companion details.",
-          error: error.message,
-        }); // Include error message in response
+      res.status(500).json({
+        message: "Failed to add companion details.",
+        error: error.message,
+      }); // Include error message in response
     }
   });
 
@@ -166,7 +165,7 @@ module.exports = function (db, storage) {
       // Retrieve the user based on the provided username
       const userSnapshot = await db
         .collection("Compawnions")
-        .where("CompawnionUser.accountCreate.Username", "==", Username) // Correct path to the username
+        .where("CompawnionUser.accountCreate.Username", "==", Username)
         .get();
 
       // Check if the user exists
@@ -180,8 +179,8 @@ module.exports = function (db, storage) {
       // Compare the provided password with the hashed password stored in Firestore
       const isMatch = await bcrypt.compare(
         Password,
-        userData.CompawnionUser.Password
-      ); // Adjusted path to Password
+        userData.CompawnionUser.accountCreate.Password
+      ); // Ensure correct path
 
       if (!isMatch) {
         return res.status(401).json({ message: "Invalid credentials." });
@@ -195,12 +194,14 @@ module.exports = function (db, storage) {
       });
 
       // Return the token for the logged-in user
-      res.json({ token: userData.token });
+      const token = jwt.sign({ Username }, secretKey, { expiresIn: "1h" }); // Generate token
+      res.json({ token });
     } catch (error) {
       console.error("Error logging in:", error);
       res.status(500).json({ message: "Failed to log in." });
     }
   });
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
