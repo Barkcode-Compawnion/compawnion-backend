@@ -47,7 +47,7 @@ module.exports = function (db, storage) {
     try {
       const {
         personal: {
-          picture,
+          picture: Image,
           name,
           type,
           age: { month, year },
@@ -65,34 +65,61 @@ module.exports = function (db, storage) {
           adoptionDate,
           Status,
         },
-        rfid
+        rfid,
       } = petData; // Use petData directly
 
       console.log("Received data:", petData); // Log received data
 
-      // Get the next auto-incremented Pet ID
-      const petId = await getNextPetId();
+      // Translate Image into blob
+      let Picture = null;
+      if (Image) {
+        try {
+          // Create a buffer from the base64 string
+          const type = Image.match(
+            /data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/
+          )[1];
+          const data = Image.replace(/^data:image\/\w+;base64,/, "");
+          const buffer = Buffer.from(data, "base64");
 
-      // Format the Pet ID to include leading zeros (e.g., 000-001)
-      const formattedPetId = petId.toString().padStart(3, "0");
+          // Get the next auto-incremented Pet ID
+          const petId = await getNextPetId();
 
-      // Add the new pet document with the auto-incremented Pet ID as the document ID
-      await db
-        .collection("RescuedAnimals")
-        .doc(formattedPetId)
-        .set({
-          // Spread the petData to include everything except petId
-          ...petData,
-          petId: formattedPetId
-          // Optionally, log the formattedPetId for internal tracking if needed
-        });
+          // Format the Pet ID to include leading zeros (e.g., 000-001)
+          const formattedPetId = petId.toString().padStart(3, "0");
 
-      console.log(`Document added with Pet ID: ${formattedPetId}`);
+          // Upload the image to Firebase Storage
+          const file = storage.file(
+            `RescuedAnimals/${formattedPetId}.${type.split("/")[1]}`
+          );
+          await file.save(buffer, { contentType: type });
+          Picture = `http://localhost:3000/media/RescuedAnimals/${formattedPetId}.${
+            type.split("/")[1]
+          }`;
 
-      // Respond with success after adding the pet
-      return res
-        .status(200)
-        .send({ message: `Pet added with ID: ${formattedPetId}` });
+          // Add the new pet document with the auto-incremented Pet ID as the document ID
+          await db
+            .collection("RescuedAnimals")
+            .doc(formattedPetId)
+            .set({
+              ...petData,
+              petId: formattedPetId,
+              personal: {
+                ...petData.personal,
+                picture: Picture, // Save the URL of the uploaded image
+              },
+            });
+
+          console.log(`Document added with Pet ID: ${formattedPetId}`);
+
+          // Respond with success after adding the pet
+          return res
+            .status(200)
+            .send({ message: `Pet added with ID: ${formattedPetId}` });
+        } catch (error) {
+          console.error("Error uploading image:", error);
+          return res.status(500).json({ message: "Failed to upload image." });
+        }
+      }
     } catch (error) {
       console.error("Error adding new pet:", error);
       return res
@@ -103,35 +130,42 @@ module.exports = function (db, storage) {
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  // In ra.js
-ra.post("/transfer/:id", async (req, res) => {
-  const petId = req.params.id;
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  try {
+  // In ra.js
+  ra.post("/transfer/:id", async (req, res) => {
+    const petId = req.params.id;
+
+    try {
       const rescuedRef = db.collection("RescuedAnimals").doc(petId);
       const doc = await rescuedRef.get();
 
       if (!doc.exists) {
-          return res.status(404).json({ message: "Pet not found in RescuedAnimals" });
+        return res
+          .status(404)
+          .json({ message: "Pet not found in RescuedAnimals" });
       }
 
       // Get the pet data and set it in the AdoptedAnimals collection
       const petData = doc.data();
-      await db.collection("AdoptedAnimals").doc(petId).set({
+      await db
+        .collection("AdoptedAnimals")
+        .doc(petId)
+        .set({
           ...petData,
           adoptionDate: new Date().toISOString(), // Add adoption date if needed
-          status: "Adopted"
-      });
+          status: "Adopted",
+        });
 
       // Remove the pet from RescuedAnimals after transfer
       await rescuedRef.delete();
 
       res.json({ message: "Pet successfully transferred to AdoptedAnimals" });
-  } catch (error) {
+    } catch (error) {
       console.error("Error transferring pet:", error);
       res.status(500).json({ message: "Error transferring pet", error });
-  }
-});
+    }
+  });
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ra.get("/", async (req, res) => {
