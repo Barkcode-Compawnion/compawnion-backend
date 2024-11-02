@@ -76,7 +76,7 @@ app.get("/", (req, res) => {
 // Media routes
 const mediaRoutes = [
   'Admins',
-  'pets'
+  'RescuedAnimals'
 ];
 for (const route of mediaRoutes) {
   app.get(`/media/${route}/:id`, (req, res) => {
