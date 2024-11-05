@@ -292,7 +292,7 @@ module.exports = function (db, storage) {
           // Upload the image to Firebase Storage
           const file = storage.file(`Admins/${userId}.${type.split("/")[1]}`);
           await file.save(buffer, { contentType: type });
-          Picture = `http://localhost:3000/media/Admins/${userId}.${type.split("/")[1]}`;
+          Picture = `https://compawnion-backend.onrender.com/media/Admins/${userId}.${type.split("/")[1]}`;
         } catch (error) {
           console.error("Error uploading image:", error);
           return res.status(500).json({ message: "Failed to upload image." });
