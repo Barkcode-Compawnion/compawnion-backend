@@ -92,7 +92,7 @@ module.exports = function (db, storage) {
             `RescuedAnimals/${formattedPetId}.${type.split("/")[1]}`
           );
           await file.save(buffer, { contentType: type });
-          Picture = `gs://compawnion-fbb5a.appspot.com/RescuedAnimals/RescuedAnimals/${formattedPetId}.${
+          Picture = `https://compawnion-backend.onrender.com/media/RescuedAnimals/${formattedPetId}.${
             type.split("/")[1]
           }`;
 
