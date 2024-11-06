@@ -140,9 +140,9 @@ module.exports = function (db, storage) {
 
   Admins.post("/login", async (req, res) => {
     const { Username, Password, Email } = req.body;
-    console.log(`Login attempt for username: ${Username} or email: ${Email}`); // Log the username or email
+    console.log(`Login attempt with username: ${Username} or email: ${Email}`);
 
-    // Check if Username or Email and Password are provided
+    // Ensure Username or Email and Password are provided
     if ((!Username && !Email) || !Password) {
       console.log("Username or Email, and Password are required.");
       return res
@@ -151,23 +151,29 @@ module.exports = function (db, storage) {
     }
 
     try {
-      // Try to retrieve the user based on the provided username
-      let userSnapshot = await db
-        .collection("Admins")
-        .where("aStaffInfo.Username", "==", Username)
-        .get();
+      let userSnapshot;
 
-      // If no user found by username, try finding by email
-      if (userSnapshot.empty) {
-        console.log("No user found with this username. Trying with email.");
+      // Check if Username is provided and perform query
+      if (Username) {
         userSnapshot = await db
           .collection("Admins")
-          .where("aStaffInfo.Email", "==", Email)
+          .where("aStaffInfo.Username", "==", Username)
           .get();
       }
 
-      // Check if user was found by either username or email
-      if (userSnapshot.empty) {
+      // If Username query is empty or Username wasn't provided, try Email query
+      if (!userSnapshot || userSnapshot.empty) {
+        console.log("No user found with this username. Trying with email.");
+        if (Email) {
+          userSnapshot = await db
+            .collection("Admins")
+            .where("aStaffInfo.Email", "==", Email)
+            .get();
+        }
+      }
+
+      // Check if user was found by either Username or Email
+      if (!userSnapshot || userSnapshot.empty) {
         console.log("No user found with this username or email.");
         return res.status(404).json({ message: "User not found." });
       }
