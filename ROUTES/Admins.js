@@ -43,31 +43,50 @@ module.exports = function (db, storage) {
   // Create Admin
 
   Admins.post("/register", async (req, res) => {
-    const { Name, Picture: Image, Username, Password, Email, Mobilenumber, Branches } = req.body;
+    const {
+      Name,
+      Picture: Image,
+      Username,
+      Password,
+      Email,
+      Mobilenumber,
+      Branches,
+    } = req.body;
 
     // Check if all required fields are provided
-    if (!Name || !Username || !Password || !Email || !Mobilenumber || !Branches) {
+    if (
+      !Name ||
+      !Username ||
+      !Password ||
+      !Email ||
+      !Mobilenumber ||
+      !Branches
+    ) {
       return res.status(400).json({ message: "All fields are required." });
-    };
+    }
 
     // Translate Image into blob
     let Picture = null;
     if (Image) {
       try {
         // Create a buffer from the base64 string
-        const type = Image.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)[1];
+        const type = Image.match(
+          /data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/
+        )[1];
         const data = Image.replace(/^data:image\/\w+;base64,/, "");
         const buffer = Buffer.from(data, "base64");
 
         // Upload the image to Firebase Storage
         const file = storage.file(`Admins/${Username}.${type.split("/")[1]}`);
         await file.save(buffer, { contentType: type });
-        Picture = `http://localhost:3000/media/Admins/${Username}.${type.split("/")[1]}`;
+        Picture = `http://localhost:3000/media/Admins/${Username}.${
+          type.split("/")[1]
+        }`;
       } catch (error) {
         console.error("Error uploading image:", error);
         return res.status(500).json({ message: "Failed to upload image." });
       }
-    };
+    }
 
     try {
       // Check if the username already exists
@@ -121,27 +140,34 @@ module.exports = function (db, storage) {
 
   Admins.post("/login", async (req, res) => {
     const { Username, Password } = req.body;
-    console.log(`Login attempt for username: ${Username}`); // Log the username
+    console.log(
+      `Login attempt for username: ${Username} or email: ${Username}`
+    ); // Log the username or email
 
     try {
-      // Retrieve the user based on the provided username
-      const userSnapshot = await db
+      // Try to retrieve the user based on the provided username
+      let userSnapshot = await db
         .collection("Admins")
         .where("aStaffInfo.Username", "==", Username)
         .get();
-      console.log(
-        `User snapshot found: ${userSnapshot.docs.length} document(s)`
-      );
 
-      // Check if the user exists
+      // If no user found by username, try finding by email
       if (userSnapshot.empty) {
-        console.log("No user found with this username.");
+        console.log("No user found with this username. Trying with email.");
+        userSnapshot = await db
+          .collection("Admins")
+          .where("aStaffInfo.Email", "==", Username)
+          .get();
+      }
+
+      // Check if user was found by either username or email
+      if (userSnapshot.empty) {
+        console.log("No user found with this username or email.");
         return res.status(404).json({ message: "User not found." });
       }
 
       // Get the user data
       const userData = userSnapshot.docs[0].data();
-
 
       // Compare the provided password with the hashed password stored in Firestore
       const isMatch = await bcrypt.compare(
@@ -156,7 +182,11 @@ module.exports = function (db, storage) {
 
       // Update the user's last login timestamp
       const loginTimestamp = new Date().toISOString();
-      const token = jwt.sign({ Username }, secretKey, { expiresIn: "1h" });
+      const token = jwt.sign(
+        { Username: userData.aStaffInfo.Username },
+        secretKey,
+        { expiresIn: "1h" }
+      );
 
       await userSnapshot.docs[0].ref.update({
         LastLogin: loginTimestamp,
@@ -170,24 +200,35 @@ module.exports = function (db, storage) {
       res.status(500).json({ message: "Failed to log in.", error });
     }
   });
-
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Logout Admin
 
   Admins.post("/logout", async (req, res) => {
-    const { Username } = req.body; // Get the Username from the request body
+    const { Username, Email } = req.body; // Get the Username or Email from the request body
 
-    if (!Username) {
-      return res.status(400).json({ message: "Username is required." });
+    if (!Username && !Email) {
+      return res
+        .status(400)
+        .json({ message: "Username or Email is required." });
     }
 
     try {
-      // Retrieve the user based on the Username
-      const userSnapshot = await db
+      // Try to retrieve the user based on the provided username
+      let userSnapshot = await db
         .collection("Admins")
         .where("aStaffInfo.Username", "==", Username)
         .get();
 
+      // If no user found by username, try finding by email
+      if (userSnapshot.empty) {
+        console.log("No user found with this username. Trying with email.");
+        userSnapshot = await db
+          .collection("Admins")
+          .where("aStaffInfo.Email", "==", Email)
+          .get();
+      }
+
+      // Check if user was found by either username or email
       if (userSnapshot.empty) {
         return res.status(404).json({ message: "User not found." });
       }
@@ -285,19 +326,23 @@ module.exports = function (db, storage) {
       if (Image) {
         try {
           // Create a buffer from the base64 string
-          const type = Image.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)[1];
+          const type = Image.match(
+            /data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/
+          )[1];
           const data = Image.replace(/^data:image\/\w+;base64,/, "");
           const buffer = Buffer.from(data, "base64");
 
           // Upload the image to Firebase Storage
           const file = storage.file(`Admins/${userId}.${type.split("/")[1]}`);
           await file.save(buffer, { contentType: type });
-          Picture = `https://compawnion-backend.onrender.com/media/Admins/${userId}.${type.split("/")[1]}`;
+          Picture = `https://compawnion-backend.onrender.com/media/Admins/${userId}.${
+            type.split("/")[1]
+          }`;
         } catch (error) {
           console.error("Error uploading image:", error);
           return res.status(500).json({ message: "Failed to upload image." });
         }
-      };
+      }
       updatedUser.aStaffInfo.Picture = Picture;
       // !!!!!!!!!!!!!!!!!!!!! UNTESTED CODE !!!!!!!!!!!!!!!!!!!!!
 
@@ -323,7 +368,7 @@ module.exports = function (db, storage) {
         const filename = Picture.split("/").slice(-1)[0];
         const file = storage.file(`Admins/${filename}`);
         await file.delete();
-      };
+      }
 
       await userRef.delete();
       res.json({ message: "Admin deleted successfully" });
