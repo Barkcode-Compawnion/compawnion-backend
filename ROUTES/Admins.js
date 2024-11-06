@@ -221,6 +221,7 @@ module.exports = function (db, storage) {
   Admins.post("/logout", async (req, res) => {
     const { Username, Email } = req.body; // Get the Username or Email from the request body
 
+    // Check that at least Username or Email is provided
     if (!Username && !Email) {
       return res
         .status(400)
@@ -228,23 +229,29 @@ module.exports = function (db, storage) {
     }
 
     try {
-      // Try to retrieve the user based on the provided username
-      let userSnapshot = await db
-        .collection("Admins")
-        .where("aStaffInfo.Username", "==", Username)
-        .get();
+      let userSnapshot;
 
-      // If no user found by username, try finding by email
-      if (userSnapshot.empty) {
-        console.log("No user found with this username. Trying with email.");
+      // If Username is provided, try to find user by Username
+      if (Username) {
         userSnapshot = await db
           .collection("Admins")
-          .where("aStaffInfo.Email", "==", Email)
+          .where("aStaffInfo.Username", "==", Username)
           .get();
       }
 
-      // Check if user was found by either username or email
-      if (userSnapshot.empty) {
+      // If no user found by Username or Username wasn't provided, try finding by Email
+      if (!userSnapshot || userSnapshot.empty) {
+        console.log("No user found with this username. Trying with email.");
+        if (Email) {
+          userSnapshot = await db
+            .collection("Admins")
+            .where("aStaffInfo.Email", "==", Email)
+            .get();
+        }
+      }
+
+      // Check if user was found by either Username or Email
+      if (!userSnapshot || userSnapshot.empty) {
         return res.status(404).json({ message: "User not found." });
       }
 
@@ -255,8 +262,10 @@ module.exports = function (db, storage) {
 
       res.json({ message: "Logout successful." });
     } catch (error) {
-      console.error("Error logging out:", error);
-      res.status(500).json({ message: "Failed to log out.", error });
+      console.error("Error logging out:", error.message, error.stack);
+      res
+        .status(500)
+        .json({ message: "Failed to log out.", error: error.message });
     }
   });
 
