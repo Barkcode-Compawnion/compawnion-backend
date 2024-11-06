@@ -142,6 +142,14 @@ module.exports = function (db, storage) {
     const { Username, Password, Email } = req.body;
     console.log(`Login attempt for username: ${Username} or email: ${Email}`); // Log the username or email
 
+    // Check if Username or Email and Password are provided
+    if ((!Username && !Email) || !Password) {
+      console.log("Username or Email, and Password are required.");
+      return res
+        .status(400)
+        .json({ message: "Username or Email, and Password are required." });
+    }
+
     try {
       // Try to retrieve the user based on the provided username
       let userSnapshot = await db
@@ -194,8 +202,10 @@ module.exports = function (db, storage) {
       // Return the token for the logged-in user
       res.json({ token });
     } catch (error) {
-      console.error("Error logging in:", error);
-      res.status(500).json({ message: "Failed to log in.", error });
+      console.error("Error logging in:", error.message, error.stack);
+      res
+        .status(500)
+        .json({ message: "Failed to log in.", error: error.message });
     }
   });
 
