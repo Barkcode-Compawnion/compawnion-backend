@@ -139,10 +139,8 @@ module.exports = function (db, storage) {
   // Login Admin
 
   Admins.post("/login", async (req, res) => {
-    const { Username, Password } = req.body;
-    console.log(
-      `Login attempt for username: ${Username} or email: ${Username}`
-    ); // Log the username or email
+    const { Username, Password, Email } = req.body;
+    console.log(`Login attempt for username: ${Username} or email: ${Email}`); // Log the username or email
 
     try {
       // Try to retrieve the user based on the provided username
@@ -156,7 +154,7 @@ module.exports = function (db, storage) {
         console.log("No user found with this username. Trying with email.");
         userSnapshot = await db
           .collection("Admins")
-          .where("aStaffInfo.Email", "==", Username)
+          .where("aStaffInfo.Email", "==", Email)
           .get();
       }
 
@@ -200,6 +198,7 @@ module.exports = function (db, storage) {
       res.status(500).json({ message: "Failed to log in.", error });
     }
   });
+
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Logout Admin
 
