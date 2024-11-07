@@ -1,107 +1,82 @@
-const express = require("express");
-const { PDFDocument, rgb } = require("pdf-lib");
-const fs = require("fs");
-const path = require("path");
+const express = require('express');
+const cors = require('cors');
+const { PDFDocument, StandardFonts } = require('pdf-lib');
+const fs = require('fs').promises;
+const path = require('path');
 const pdfContract = express.Router();
 
-/**
- * Generates a PDF for the adoption contract.
- * @param {Object} applicationData - The application data to include in the PDF.
- * @param {string} signatureData - The base64 signature image data.
- * @returns {Promise<Buffer>} - The generated PDF as a byte buffer.
- */
-async function generatePDF(applicationData, signatureData) {
+pdfContract.use(cors());
+pdfContract.use(express.json({ limit: '50mb' })); // To handle large image data (signature)
+
+// Endpoint to save contract and signature to PDF
+pdfContract.post('/save-signature', async (req, res) => {
+  const { signatureData, adopterName, adoptionDate, animalName, adoptionFee } = req.body;
+
+  // Validate signature data
+  if (!signatureData || !signatureData.startsWith('data:image/png;base64,')) {
+    return res.status(400).send({ message: 'Invalid or missing signature data' });
+  }
+
+  try {
+    // Create a new PDF document
     const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage([612, 792]); // Set to letter size (8.5 x 11 inches)
 
-    // Define content for the contract
-    const title = 'ADOPTION AGREEMENT';
-    const adopterName = `${applicationData.applicant.firstName} ${applicationData.applicant.middleName ? applicationData.applicant.middleName + ' ' : ''}${applicationData.applicant.lastName}`;
-    const adopterEmail = applicationData.applicant.email || 'N/A';
-    const adopterContact = applicationData.applicant.phone || 'N/A';
+    // Embed a standard font
+    const font = await pdfDoc.embedFont(StandardFonts.TimesRoman);
 
-    const petDetails = `
-Animal Type: ${applicationData.animalType || 'N/A'}
-Breed: ${applicationData.dwelling.petBreeds || 'N/A'}
-Name: ${applicationData.petName || 'N/A'}
-Age: ${applicationData.age || 'N/A'}
-Microchip Number: ${applicationData.microchipNumber || 'N/A'}`;
+    // Add a page to the document
+    const page = pdfDoc.addPage([600, 800]);
+    const { width, height } = page.getSize();
+    const fontSize = 12;
 
-    const terms = `
-Terms and Conditions:
-1. The adopter agrees to provide a loving home.
-2. The adopter agrees to return the pet to the agency if they can no longer care for it.
-3. The adopter is responsible for all vet care and food costs.
-4. The adoption fee is $${applicationData.adoptionFee || 'N/A'}.`;
+    // Define contract text with placeholders
+    const contractText = `
+      Animal Adoption Agreement
 
-    const signatureLine = `
-Signature: ________________________________________
-Date: ___________________`;
+      This agreement is made on ${adoptionDate} by and between ${adopterName} (the Adopter) 
+      and the Rescue Organization (the Rescue) for the adoption of ${animalName}.
 
-    // Draw text on the PDF
-    page.drawText(title, { x: 50, y: 750, size: 24, color: rgb(0, 0, 0) });
-    page.drawText(`Adopter Name: ${adopterName}`, { x: 50, y: 700, size: 16 });
-    page.drawText(`Adopter Email: ${adopterEmail}`, { x: 50, y: 680, size: 16 });
-    page.drawText(`Contact Number: ${adopterContact}`, { x: 50, y: 660, size: 16 });
-    page.drawText(`Pet Details:\n${petDetails}`, { x: 50, y: 620, size: 15 });
-    page.drawText(`\n${terms}`, { x: 50, y: 470, size: 15 });
-    page.drawText(signatureLine, { x: 50, y: 300, size: 15 });
+      Terms and Conditions:
+      
+      1. The Adopter agrees to provide adequate food, water, shelter, and exercise.
+      2. The Adopter agrees to maintain the animal in a safe environment.
+      3. The Adopter agrees to provide regular veterinary care.
+      4. If the Adopter can no longer care for the animal, they agree to contact the Rescue.
+      5. The adoption fee is $${adoptionFee}, supporting the Rescue's efforts.
 
-    // Draw the signature image if provided
-    if (signatureData) {
-        try {
-            const pngImage = await pdfDoc.embedPng(signatureData);
-            const pngDims = pngImage.scale(0.5); // Scale down the image if necessary
-            page.drawImage(pngImage, {
-                x: 50,
-                y: 240, // Adjust Y position as needed for signature
-                width: pngDims.width,
-                height: pngDims.height,
-            });
-        } catch (error) {
-            console.error("Error embedding signature image:", error);
-        }
-    }
+      By signing below, both parties agree to the terms set forth in this adoption contract.
 
-    // Serialize the PDF to bytes
+      Adopter: ${adopterName}
+      Date: ${adoptionDate}
+    `;
+
+    // Add the contract text to the PDF
+    page.drawText(contractText, { x: 50, y: height - 100, size: fontSize, font, lineHeight: 15 });
+
+    // Add the signature image
+    const signatureImageBytes = Buffer.from(signatureData.split(',')[1], 'base64');
+    const signatureImage = await pdfDoc.embedPng(signatureImageBytes);
+    const signatureImageDims = signatureImage.scale(0.5);
+
+    page.drawImage(signatureImage, {
+      x: 50,
+      y: height - 500,
+      width: signatureImageDims.width,
+      height: signatureImageDims.height,
+    });
+
+    // Serialize the PDF and save it
     const pdfBytes = await pdfDoc.save();
-    return pdfBytes;
-}
+    const pdfPath = path.join(__dirname, 'adoption-contract.pdf');
 
-/**
- * Generates and saves a PDF locally.
- * @param {Object} applicationData - The application data to include in the PDF.
- * @param {string} signatureData - The base64 signature image data.
- * @returns {Promise<string>} - The file path of the saved PDF.
- */
-async function generateAndSavePDF(applicationData, signatureData) {
-    const pdfBytes = await generatePDF(applicationData, signatureData);
+    await fs.writeFile(pdfPath, pdfBytes);
 
-    // Generate a unique filename using the application ID and timestamp
-    const pdfPath = path.join(__dirname, `adoption_contract_${applicationData.applicationAppId}_${Date.now()}.pdf`);
-    fs.writeFileSync(pdfPath, pdfBytes); // Save the PDF locally
-    return pdfPath;
-}
-
-// Route to generate a PDF
-pdfContract.post("/generate", async (req, res) => {
-    const applicationData = req.body.applicationData; // Expecting application data in the request body
-    const signatureData = req.body.signature; // Expecting the signature image data
-
-    // Validate incoming data
-    if (!applicationData || !signatureData) {
-        return res.status(400).send({ message: "Application data and signature are required." });
-    }
-
-    try {
-        const pdfPath = await generateAndSavePDF(applicationData, signatureData); // Generate and save the PDF
-        console.log(`PDF generated at: ${pdfPath}`);
-        res.status(201).send({ message: "PDF generated", pdfPath });
-    } catch (error) {
-        console.error("Error generating PDF:", error);
-        res.status(500).send({ message: "Error generating PDF", error: error.message });
-    }
+    // Respond with the URL of the generated PDF (ensure static file serving is configured)
+    res.json({ pdfUrl: `/adoption-contract.pdf` });
+  } catch (error) {
+    console.error('Error saving contract to PDF:', error);
+    res.status(500).send({ message: 'Error saving contract to PDF', error: error.message });
+  }
 });
 
-// Export the functions for use in application.js
-module.exports = { generateAndSavePDF, pdfContract };
+module.exports = pdfContract;
