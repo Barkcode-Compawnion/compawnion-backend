@@ -11,23 +11,6 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Function to send approval email with appPetID
-const sendApprovalEmail = async (email, appPetId) => {
-  try {
-    const info = await transporter.sendMail({
-      from: '"Pet Adoption" <your-email@gmail.com>', // Sender address
-      to: email, // Recipient address
-      subject: "Application Approved", // Subject line
-      text: `Congratulations! Your application has been approved. Your unique Pet ID is: ${appPetId}`, // Plain text body
-      html: `<p>Congratulations! Your application has been approved. Your unique Pet ID is: <strong>${appPetId}</strong></p>`, // HTML body
-    });
-
-    console.log("Approval email sent: %s", info.messageId);
-  } catch (error) {
-    console.error("Error sending approval email:", error);
-  }
-};
-
 // Function to get the next incremented appPetID
 async function getNextAppPetId(db) {
   const counterRef = db.collection("Counter").doc("AppPetIDCounter");
@@ -181,7 +164,8 @@ module.exports = function (db) {
     }
   });
 
-  application.post("/application/approve/{id}", async (req, res) => {
+  // Approve application and send email
+  application.post("/:id/approve", async (req, res) => {
     const appId = req.params.id;
     const { email } = req.body; // Email address for the adopter
 
