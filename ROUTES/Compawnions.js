@@ -41,8 +41,9 @@ module.exports = function (db, storage) {
   // Register Companion (Basic Information)
   // Register Companion
   Compawnions.post("/register", async (req, res) => {
+    console.log(req.body); // Log the request payload to check the data
     const {
-      accountCreate: { Username, Email, Phone, Password },
+      accountCreate: { Username, Email, Password },
     } = req.body;
 
     try {
@@ -69,7 +70,7 @@ module.exports = function (db, storage) {
         .doc(formattedCompId)
         .set({
           CompawnionUser: {
-            accountCreate: { Username, Email, Phone, Password: hashedPassword },
+            accountCreate: { Username, Email, Password: hashedPassword },
             MedSched: [],
             TrustedVet: [],
             CompawnionSched: [],

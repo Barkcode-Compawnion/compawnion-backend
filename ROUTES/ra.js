@@ -40,6 +40,31 @@ module.exports = function (db, storage) {
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Add a new pet
+  // Request body: {
+  //   personal: {
+  //     picture: String (base64 image string, optional),
+  //     name: String,
+  //     type: String,
+  //     age: { month: Number, year: Number },
+  //     breed: String,
+  //     weight: Number,
+  //     size: String,
+  //     gender: String
+  //   },
+  //   background: {
+  //     personality: String,
+  //     backgroundStory: String,
+  //     vaccination: { vaccinationDate: String, vaccinationExp: String },
+  //     medicalHistory: { medicalDate: String, medicalCert: String },
+  //     rescueDate: String,
+  //     adoptionDate: String (optional),
+  //     status: String
+  //   },
+  //   rfid: String (optional)
+  // }
+  // Success response: { message: String }
+  // Error response: { message: String }
 
   ra.post("/", async (req, res) => {
     const petData = req.body;
@@ -128,11 +153,11 @@ module.exports = function (db, storage) {
     }
   });
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Transfer a pet to AdoptedAnimals
+  // Request params: { id: String }
+  // Success response: { message: String }
+  // Error response: { message: String }
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  // In ra.js
   ra.post("/transfer/:id", async (req, res) => {
     const petId = req.params.id;
 
@@ -167,7 +192,10 @@ module.exports = function (db, storage) {
     }
   });
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Get all rescued pets
+  // Success response: [{ id: String, personal: Object, background: Object }]
+  // Error response: { message: String }
+
   ra.get("/", async (req, res) => {
     try {
       const snapshot = await db.collection("RescuedAnimals").get();
@@ -177,6 +205,11 @@ module.exports = function (db, storage) {
       res.status(500).json({ message: "Error retrieving Animals", error });
     }
   });
+
+  // Get pet details by ID
+  // Request params: { id: String }
+  // Success response: { id: String, personal: Object, background: Object }
+  // Error response: { message: String }
 
   ra.get("/:id", async (req, res) => {
     try {
@@ -194,7 +227,33 @@ module.exports = function (db, storage) {
     }
   });
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Update pet details
+  // Request params: { id: String }
+  // Request body: {
+  //   personal: {
+  //     picture: String (optional),
+  //     name: String,
+  //     type: String,
+  //     age: { month: Number, year: Number },
+  //     breed: String,
+  //     weight: Number,
+  //     size: String,
+  //     gender: String
+  //   },
+  //   background: {
+  //     personality: String,
+  //     backgroundStory: String,
+  //     vaccination: { vaccinationDate: String, vaccinationExp: String },
+  //     medicalHistory: { medicalDate: String, medicalCert: String },
+  //     rescueDate: String,
+  //     adoptionDate: String (optional),
+  //     status: String
+  //   },
+  //   rfid: String (optional)
+  // }
+  // Success response: { message: String }
+  // Error response: { message: String }
+
   ra.put("/:id", async (req, res) => {
     try {
       const userId = req.params.id;
@@ -207,7 +266,11 @@ module.exports = function (db, storage) {
     }
   });
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Delete a pet
+  // Request params: { id: String }
+  // Success response: { message: String }
+  // Error response: { message: String }
+
   ra.delete("/:id", async (req, res) => {
     try {
       const userId = req.params.id;

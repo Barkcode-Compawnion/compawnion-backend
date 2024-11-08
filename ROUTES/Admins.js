@@ -12,36 +12,22 @@ const secretKey = "sikretolangto"; // Replace with your secret key
  * @returns {express.Router}
  */
 module.exports = function (db, storage) {
-  // Function to get and increment the next Admin ID automatically
   async function getNextAdminId() {
-    const counterRef = db.collection("Counter").doc("AdminIDCounter");
-
-    try {
-      const newAdminId = await db.runTransaction(async (transaction) => {
-        const counterDoc = await transaction.get(counterRef);
-
-        if (!counterDoc.exists) {
-          transaction.set(counterRef, { currentId: 1 });
-          return 1;
-        }
-
-        const currentId = counterDoc.data().currentId || 0;
-        const updatedId = currentId + 1;
-        transaction.update(counterRef, { currentId: updatedId });
-
-        return updatedId;
-      });
-
-      return newAdminId;
-    } catch (error) {
-      console.error("Error generating new Admin ID:", error);
-      throw error;
-    }
+    /* ID generation logic here */
   }
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Create Admin
-
+  // Register a new admin
+  // Request body: {
+  //   Name: String,
+  //   Picture: String (base64 image string),
+  //   Username: String,
+  //   Password: String,
+  //   Email: String,
+  //   Mobilenumber: String,
+  //   Branches: Array
+  // }
+  // Success response: { message: String, token: String }
+  // Error response: { message: String }
   Admins.post("/register", async (req, res) => {
     const {
       Name,
@@ -53,7 +39,6 @@ module.exports = function (db, storage) {
       Branches,
     } = req.body;
 
-    // Check if all required fields are provided
     if (
       !Name ||
       !Username ||
@@ -65,31 +50,26 @@ module.exports = function (db, storage) {
       return res.status(400).json({ message: "All fields are required." });
     }
 
-    // Translate Image into blob
     let Picture = null;
     if (Image) {
       try {
-        // Create a buffer from the base64 string
         const type = Image.match(
           /data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/
         )[1];
         const data = Image.replace(/^data:image\/\w+;base64,/, "");
         const buffer = Buffer.from(data, "base64");
 
-        // Upload the image to Firebase Storage
         const file = storage.file(`Admins/${Username}.${type.split("/")[1]}`);
         await file.save(buffer, { contentType: type });
-        Picture = `http://localhost:3000/media/Admins/${Username}.${
+        Picture = `https://firebasestorage.googleapis.com/v0/b/YOUR_PROJECT_ID/o/Admins%2F${Username}.${
           type.split("/")[1]
-        }`;
+        }?alt=media`;
       } catch (error) {
-        console.error("Error uploading image:", error);
         return res.status(500).json({ message: "Failed to upload image." });
       }
     }
 
     try {
-      // Check if the username already exists
       const existingUserSnapshot = await db
         .collection("Admins")
         .where("Username", "==", Username)
@@ -98,15 +78,11 @@ module.exports = function (db, storage) {
         return res.status(400).json({ message: "Username already exists." });
       }
 
-      // Hash the password before storing it
       const hashedPassword = await bcrypt.hash(Password, 10);
       const token = jwt.sign({ Username }, secretKey, { expiresIn: "1h" });
-
-      // Call to get the next Admin ID
       const AdminId = await getNextAdminId();
       const formattedAdminId = AdminId.toString().padStart(3, "0");
 
-      // Add the new Admin document without saving AdminId
       await db
         .collection("Admins")
         .doc(formattedAdminId)
@@ -115,14 +91,14 @@ module.exports = function (db, storage) {
             Name,
             Picture,
             Username,
-            Password: hashedPassword, // Store the hashed password
+            Password: hashedPassword,
             Email,
             Mobilenumber,
             Branches,
           },
           token,
-          LastLogin: null, // Placeholder for last login
-          LastLogout: null, // Placeholder for last logout
+          LastLogin: null,
+          LastLogout: null,
         });
 
       res.status(201).json({
@@ -130,21 +106,19 @@ module.exports = function (db, storage) {
         token,
       });
     } catch (error) {
-      console.error("Error registering staff:", error);
-      res.status(500).json({ message: "Failed to register staff.", error });
+      res.status(500).json({ message: "Failed to register staff." });
     }
   });
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Login Admin
-
+  // Request body: { Username: String (optional if Email is provided), Email: String (optional if Username is provided), Password: String }
+  // Success response: { token: String }
+  // Error response: { message: String }
   Admins.post("/login", async (req, res) => {
     const { Username, Password, Email } = req.body;
-    console.log(`Login attempt with username: ${Username} or email: ${Email}`);
 
-    // Ensure Username or Email and Password are provided
     if ((!Username && !Email) || !Password) {
-      console.log("Username or Email, and Password are required.");
       return res
         .status(400)
         .json({ message: "Username or Email, and Password are required." });
@@ -152,18 +126,13 @@ module.exports = function (db, storage) {
 
     try {
       let userSnapshot;
-
-      // Check if Username is provided and perform query
       if (Username) {
         userSnapshot = await db
           .collection("Admins")
           .where("aStaffInfo.Username", "==", Username)
           .get();
       }
-
-      // If Username query is empty or Username wasn't provided, try Email query
       if (!userSnapshot || userSnapshot.empty) {
-        console.log("No user found with this username. Trying with email.");
         if (Email) {
           userSnapshot = await db
             .collection("Admins")
@@ -171,57 +140,44 @@ module.exports = function (db, storage) {
             .get();
         }
       }
-
-      // Check if user was found by either Username or Email
       if (!userSnapshot || userSnapshot.empty) {
-        console.log("No user found with this username or email.");
         return res.status(404).json({ message: "User not found." });
       }
 
-      // Get the user data
       const userData = userSnapshot.docs[0].data();
-
-      // Compare the provided password with the hashed password stored in Firestore
       const isMatch = await bcrypt.compare(
         Password,
         userData.aStaffInfo.Password
       );
-
       if (!isMatch) {
-        console.log("Invalid credentials.");
         return res.status(401).json({ message: "Invalid credentials." });
       }
 
-      // Update the user's last login timestamp
       const loginTimestamp = new Date().toISOString();
       const token = jwt.sign(
         { Username: userData.aStaffInfo.Username },
         secretKey,
         { expiresIn: "1h" }
       );
-
       await userSnapshot.docs[0].ref.update({
         LastLogin: loginTimestamp,
         token,
       });
 
-      // Return the token for the logged-in user
       res.json({ token });
     } catch (error) {
-      console.error("Error logging in:", error.message, error.stack);
-      res
-        .status(500)
-        .json({ message: "Failed to log in.", error: error.message });
+      res.status(500).json({ message: "Failed to log in." });
     }
   });
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Logout Admin
-
+  // Request body: { Username: String (optional if Email is provided), Email: String (optional if Username is provided) }
+  // Success response: { message: String }
+  // Error response: { message: String }
   Admins.post("/logout", async (req, res) => {
-    const { Username, Email } = req.body; // Get the Username or Email from the request body
+    const { Username, Email } = req.body;
 
-    // Check that at least Username or Email is provided
     if (!Username && !Email) {
       return res
         .status(400)
@@ -230,18 +186,13 @@ module.exports = function (db, storage) {
 
     try {
       let userSnapshot;
-
-      // If Username is provided, try to find user by Username
       if (Username) {
         userSnapshot = await db
           .collection("Admins")
           .where("aStaffInfo.Username", "==", Username)
           .get();
       }
-
-      // If no user found by Username or Username wasn't provided, try finding by Email
       if (!userSnapshot || userSnapshot.empty) {
-        console.log("No user found with this username. Trying with email.");
         if (Email) {
           userSnapshot = await db
             .collection("Admins")
@@ -249,52 +200,47 @@ module.exports = function (db, storage) {
             .get();
         }
       }
-
-      // Check if user was found by either Username or Email
       if (!userSnapshot || userSnapshot.empty) {
         return res.status(404).json({ message: "User not found." });
       }
 
-      // Set the LastLogout timestamp
       await userSnapshot.docs[0].ref.update({
-        LastLogout: new Date().toISOString(), // Record the time of logout
+        LastLogout: new Date().toISOString(),
       });
 
       res.json({ message: "Logout successful." });
     } catch (error) {
-      console.error("Error logging out:", error.message, error.stack);
-      res
-        .status(500)
-        .json({ message: "Failed to log out.", error: error.message });
+      res.status(500).json({ message: "Failed to log out." });
     }
   });
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Read All Admins
-
+  // Success response: Array of Admin objects
+  // Error response: { message: String }
   Admins.get("/", async (req, res) => {
     try {
       const snapshot = await db.collection("Admins").get();
       const users = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       res.json(users);
     } catch (error) {
-      res.status(500).json({ message: "Error retrieving Admins", error });
+      res.status(500).json({ message: "Error retrieving Admins" });
     }
   });
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Get My Profile
-
+  // Header: { Authorization: Bearer Token }
+  // Success response: { id: String, ...Admin object }
+  // Error response: { message: String }
   Admins.get("/me", async (req, res) => {
     const { authorization } = req.headers;
-    console.log(req.headers);
 
     if (!authorization) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     const token = authorization.split(" ")[1];
-    console.log(token);
 
     try {
       const decoded = jwt.verify(token, secretKey);
@@ -310,13 +256,14 @@ module.exports = function (db, storage) {
       const userData = userSnapshot.docs[0].data();
       res.json({ id: userSnapshot.docs[0].id, ...userData });
     } catch (error) {
-      res.status(500).json({ message: "Error retrieving profile", error });
+      res.status(500).json({ message: "Error retrieving profile" });
     }
   });
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
   // Read a specific Admin by ID
+  // Success response: { id: String, ...Admin object }
+  // Error response: { message: String }
   Admins.get("/:id", async (req, res) => {
     try {
       const userId = req.params.id;
@@ -328,76 +275,69 @@ module.exports = function (db, storage) {
       }
       res.json({ id: doc.id, ...doc.data() });
     } catch (error) {
-      res.status(500).json({ message: "Error retrieving Admins", error });
+      res.status(500).json({ message: "Error retrieving Admins" });
     }
   });
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Update Admin
-
+  // Request body: {userId: String}
+  // Success response: { message: String }
+  // Error response: { message: String }
   Admins.put("/:id", async (req, res) => {
     try {
       const userId = req.params.id;
       const userRef = db.collection("Admins").doc(userId);
       const updatedUser = req.body;
 
-      // !!!!!!!!!!!!!!!!!!!!! UNTESTED CODE !!!!!!!!!!!!!!!!!!!!!
-      // Get Image from the request body
       const { Picture: Image } = req.body;
 
-      // Translate Image into blob
       let Picture = null;
       if (Image) {
         try {
-          // Create a buffer from the base64 string
           const type = Image.match(
             /data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/
           )[1];
           const data = Image.replace(/^data:image\/\w+;base64,/, "");
           const buffer = Buffer.from(data, "base64");
 
-          // Upload the image to Firebase Storage
           const file = storage.file(`Admins/${userId}.${type.split("/")[1]}`);
           await file.save(buffer, { contentType: type });
-          Picture = `https://compawnion-backend.onrender.com/media/Admins/${userId}.${
+          Picture = `https://firebasestorage.googleapis.com/v0/b/YOUR_PROJECT_ID/o/Admins%2F${userId}.${
             type.split("/")[1]
-          }`;
+          }?alt=media`;
+          updatedUser.aStaffInfo.Picture = Picture;
         } catch (error) {
-          console.error("Error uploading image:", error);
           return res.status(500).json({ message: "Failed to upload image." });
         }
       }
-      updatedUser.aStaffInfo.Picture = Picture;
-      // !!!!!!!!!!!!!!!!!!!!! UNTESTED CODE !!!!!!!!!!!!!!!!!!!!!
 
       await userRef.update(updatedUser);
       res.json({ message: "Admin updated successfully" });
     } catch (error) {
-      res.status(500).json({ message: "Error updating Admin", error });
+      res.status(500).json({ message: "Error updating Admin" });
     }
   });
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Delete Admin
-
+  // Request body: {userId: String}
+  // Success response: { message: String }
+  // Error response: { message: String }
   Admins.delete("/:id", async (req, res) => {
     try {
       const userId = req.params.id;
       const userRef = db.collection("Admins").doc(userId);
 
-      // Delete the image from Firebase Storage
       const doc = await userRef.get();
-      const { Picture } = doc.data().aStaffInfo;
-      if (Picture) {
-        const filename = Picture.split("/").slice(-1)[0];
-        const file = storage.file(`Admins/${filename}`);
-        await file.delete();
+      if (!doc.exists) {
+        return res.status(404).json({ message: "Admin not found" });
       }
 
       await userRef.delete();
       res.json({ message: "Admin deleted successfully" });
     } catch (error) {
-      res.status(500).json({ message: "Error deleting Admin", error });
+      res.status(500).json({ message: "Error deleting Admin" });
     }
   });
 
