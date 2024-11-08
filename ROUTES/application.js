@@ -181,7 +181,7 @@ module.exports = function (db) {
     }
   });
 
-  router.post("/application/approve", async (req, res) => {
+  application.post("/application/approve", async (req, res) => {
     const { applicationId, email } = req.body; // email for the adopter
 
     try {
