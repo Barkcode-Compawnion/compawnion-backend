@@ -1,6 +1,7 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
+const nodemailer = require("nodemailer");
 const Compawnions = express.Router();
 
 const secretKey = "sikretolangto"; // Replace with your secret key

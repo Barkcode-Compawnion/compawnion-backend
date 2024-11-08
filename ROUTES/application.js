@@ -1,4 +1,5 @@
 const express = require("express");
+const nodemailer = require("nodemailer");
 const application = express.Router();
 
 /**
@@ -33,103 +34,76 @@ module.exports = function (db) {
     }
   }
 
-  application.post("/", async (req, res) => {
-    const appData = req.body; // Get the incoming data
-
-    try {
-      const {
-        applicationType,
-        agreement,
-        paymentAgreement,
-        schedules: { onlineInterview, onsiteVisit },
-        petOwnershipExperience,
-        dwelling: {
-          petBreeds,
-          planningToMoveOut,
-          ownership,
-          numberOfPets,
-          petsAllowedInHouse,
-          numberOfHouseMembers,
-          dwellingType,
-        },
-        veterinaryClinicName,
-        applicant,
-      } = appData;
-
-      console.log("Received data:", appData);
-
-      // Get the next auto-incremented Application ID
-      const appId = await getNextAppId();
-      const formattedAppId = appId.toString().padStart(3, "0");
-
-      const newApplication = {
-        applicationType,
-        agreement,
-        paymentAgreement,
-        applicationAppId: formattedAppId,
-        schedules: { onlineInterview, onsiteVisit },
-        petOwnershipExperience,
-        dwelling: {
-          petBreeds,
-          planningToMoveOut,
-          ownership,
-          numberOfPets,
-          petsAllowedInHouse,
-          numberOfHouseMembers,
-          dwellingType,
-        },
-        veterinaryClinicName,
-        applicant,
-        status: "Pending", // Set status to "Pending"
-      };
-
-      // Add the new application document under the "PENDING" document
-      const appRef = db
-        .collection("Applications") // Collection "Applications"
-        .doc("PENDING") // Document "PENDING"
-        .collection("Applications") // Sub-collection "Applications" under "PENDING"
-        .doc(formattedAppId); // Use formatted AppId as document ID
-
-      await appRef.set(newApplication); // Save the application data
-
-      console.log("Application added with ID:", formattedAppId);
-      return res
-        .status(201)
-        .send({ message: `Application added with ID: ${formattedAppId}` });
-    } catch (error) {
-      console.error("Error occurred while processing the request:", error);
-      return res
-        .status(500)
-        .json({ message: "Error adding an application", error: error.message });
-    }
-  });
-
-  application.get("/:id", async (req, res) => {
+  application.post("/:id/approve", async (req, res) => {
     const appId = req.params.id;
 
     try {
-      // Fetch the application document directly from the "PENDING" document
+      // Get the next appPetID
+      const appPetId = await getNextAppPetId();
+
       const appRef = db
         .collection("Applications")
         .doc("PENDING")
         .collection("Applications")
-        .doc(appId); // Use the appId as document ID
+        .doc(appId);
 
       const appDoc = await appRef.get();
-
       if (!appDoc.exists) {
         return res.status(404).json({ message: "Application not found" });
       }
 
       const applicationData = appDoc.data();
+      applicationData.status = "Approved"; // Update status
+      applicationData.appPetID = appPetId; // Add auto-incremented appPetID
+
+      // Move the application to the APPROVED collection
+      await db
+        .collection("Applications")
+        .doc("APPROVED")
+        .collection("Applications")
+        .doc(appId)
+        .set(applicationData);
+
+      // Delete the application from the PENDING collection
+      await appRef.delete();
+
       res.json({
-        application: { id: appDoc.id, ...applicationData },
+        message: `Application approved, assigned appPetID ${appPetId} and moved to approved status`,
       });
     } catch (error) {
-      console.error("Error retrieving application:", error);
-      res.status(500).json({ message: "Error retrieving application", error });
+      console.error("Error approving application:", error);
+      res
+        .status(500)
+        .json({ message: "Error approving application", error: error.message });
     }
   });
+
+  // Function to get the next incremented appPetID
+  async function getNextAppPetId() {
+    const counterRef = db.collection("Counter").doc("AppPetIDCounter");
+
+    try {
+      const newAppPetId = await db.runTransaction(async (transaction) => {
+        const counterDoc = await transaction.get(counterRef);
+
+        if (!counterDoc.exists) {
+          transaction.set(counterRef, { currentId: 1 });
+          return 1;
+        }
+
+        const currentId = counterDoc.data().currentId || 0;
+        const updatedId = currentId + 1;
+        transaction.update(counterRef, { currentId: updatedId });
+
+        return updatedId;
+      });
+
+      return newAppPetId;
+    } catch (error) {
+      console.error("Error generating new appPetID:", error);
+      throw error;
+    }
+  }
 
   application.put("/:id/approve", async (req, res) => {
     const appId = req.params.id;
@@ -149,6 +123,29 @@ module.exports = function (db) {
       const applicationData = appDoc.data();
       applicationData.status = "Approved"; // Update status
 
+      // Get the next available appPetID from the counter
+      const counterRef = db.collection("Counter").doc("AppPetIDCounter");
+
+      const newAppPetID = await db.runTransaction(async (transaction) => {
+        const counterDoc = await transaction.get(counterRef);
+
+        let currentAppPetID = 0;
+        if (!counterDoc.exists) {
+          // Initialize the counter if it doesn't exist
+          transaction.set(counterRef, { currentAppPetID: 1 });
+          currentAppPetID = 1;
+        } else {
+          currentAppPetID = counterDoc.data().currentAppPetID || 0;
+          const updatedAppPetID = currentAppPetID + 1;
+          transaction.update(counterRef, { currentAppPetID: updatedAppPetID });
+        }
+
+        return currentAppPetID;
+      });
+
+      // Add appPetID to the application data
+      applicationData.appPetID = newAppPetID;
+
       // Move the application to the APPROVED collection
       await db
         .collection("Applications")
@@ -161,7 +158,7 @@ module.exports = function (db) {
       await appRef.delete();
 
       res.json({
-        message: "Application approved and moved to approved status",
+        message: `Application approved, assigned appPetID ${newAppPetID} and moved to approved status`,
       });
     } catch (error) {
       console.error("Error approving application:", error);
