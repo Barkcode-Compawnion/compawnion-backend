@@ -6,8 +6,8 @@ const application = express.Router();
 const transporter = nodemailer.createTransport({
   service: "gmail", // Replace with your email service provider
   auth: {
-    user: "your-email@gmail.com", // Your email address
-    pass: "your-email-password", // Your email password or an App Password if using Gmail
+    user: "barkcodecompawnion@gmail.com", // Your email address
+    pass: "hoyacclaayusayusinmolanghellopomagkanoulam69", // Your email password or an App Password if using Gmail
   },
 });
 
