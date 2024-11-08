@@ -181,57 +181,51 @@ module.exports = function (db) {
     }
   });
 
-  application.post("/:id/approve", async (req, res) => {
-    const appId = req.params.id;
+  router.post("/application/approve", async (req, res) => {
+    const { applicationId, email } = req.body; // email for the adopter
 
     try {
-      // Get the next appPetID (5-digit number)
-      const appPetId = await getNextAppPetId(db);
-      const formattedAppPetId = appPetId.toString().padStart(5, "0"); // Ensure 5-digit number
+      // Find the application in Firestore
+      const applicationRef = db.collection("applications").doc(applicationId);
+      const applicationDoc = await applicationRef.get();
 
-      const appRef = db
-        .collection("Applications")
-        .doc("PENDING")
-        .collection("Applications")
-        .doc(appId);
-
-      const appDoc = await appRef.get();
-      if (!appDoc.exists) {
+      if (!applicationDoc.exists) {
         return res.status(404).json({ message: "Application not found" });
       }
 
-      const applicationData = appDoc.data();
-      applicationData.status = "Approved"; // Update status
-      applicationData.appPetID = formattedAppPetId; // Add auto-incremented appPetID
+      // Generate a random 5-digit appPetID
+      const appPetID = Math.floor(10000 + Math.random() * 90000);
 
-      // Move the application to the APPROVED collection
-      await db
-        .collection("Applications")
-        .doc("APPROVED")
-        .collection("Applications")
-        .doc(appId)
-        .set(applicationData);
-
-      // Delete the application from the PENDING collection
-      await appRef.delete();
-
-      // Send approval email to the applicant
-      await sendApprovalEmail(
-        applicationData.applicant.email,
-        formattedAppPetId
-      ); // Send the email with appPetID
-
-      res.json({
-        message: `Application approved, assigned appPetID ${formattedAppPetId} and moved to approved status`,
+      // Update application status and add appPetID
+      await applicationRef.update({
+        status: "Approved",
+        appPetID: appPetID,
       });
+
+      // Prepare email content
+      const mailOptions = {
+        from: '"Pet Adoption" <your_email@gmail.com>', // Sender address
+        to: email, // Receiver email
+        subject: "Your Application has been Approved!",
+        text: `Congratulations! Your application has been approved. Your unique Pet ID is: ${appPetID}.`,
+        html: `<p>Congratulations! Your application has been approved. Your unique Pet ID is: <strong>${appPetID}</strong>.</p>`,
+      };
+
+      // Send email
+      await transporter.sendMail(mailOptions);
+
+      console.log(`Approval email sent to ${email} with appPetID: ${appPetID}`);
+      res.json({ message: "Application approved and email sent.", appPetID });
     } catch (error) {
-      console.error("Error approving application:", error);
+      console.error("Error approving application or sending email:", error);
       res
         .status(500)
-        .json({ message: "Error approving application", error: error.message });
+        .json({
+          message: "Error approving application or sending email.",
+          error: error.message,
+        });
     }
   });
-
   application.put("/:id/reject", async (req, res) => {
     const appId = req.params.id;
 
