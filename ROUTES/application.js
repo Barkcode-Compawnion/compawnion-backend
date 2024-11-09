@@ -2,43 +2,23 @@ const express = require("express");
 const nodemailer = require("nodemailer");
 const application = express.Router();
 
-// Nodemailer transporter setup
-const transporter = nodemailer.createTransport({
-  service: "gmail", // Replace with your email service provider
-  auth: {
-    user: "barkcodecompawnion@gmail.com", // Your email address
-    pass: "hoyacclaayusayusinmolanghellopomagkanoulam69", // Your email password or an App Password if using Gmail
-  },
-});
-
-// Function to get the next incremented appPetID
-async function getNextAppPetId(db) {
-  const counterRef = db.collection("Counter").doc("AppPetIDCounter");
-
-  try {
-    const newAppPetId = await db.runTransaction(async (transaction) => {
-      const counterDoc = await transaction.get(counterRef);
-
-      if (!counterDoc.exists) {
-        transaction.set(counterRef, { currentId: 1 });
-        return 1;
-      }
-
-      const currentId = counterDoc.data().currentId || 0;
-      const updatedId = currentId + 1;
-      transaction.update(counterRef, { currentId: updatedId });
-
-      return updatedId;
-    });
-
-    return newAppPetId;
-  } catch (error) {
-    console.error("Error generating new appPetID:", error);
-    throw error;
-  }
-}
-
 module.exports = function (db) {
+  // Configure nodemailer transporter with direct settings
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: "barkcodecompawnion@gmail.com", // Replace with actual email
+      pass: "fmji xuvs akpb mrke", // Replace with actual app password
+    },
+  });
+
+  // Function to generate a random 5-digit appPetID
+  async function getNextAppPetId() {
+    // Generate a random 5-digit number between 10000 and 99999
+    const appPetID = Math.floor(10000 + Math.random() * 90000);
+    return appPetID;
+  }
+
   // Function to get and increment the next Application ID atomically
   async function getNextAppId() {
     const counterRef = db.collection("Counter").doc("AppIDCounter");
@@ -164,10 +144,9 @@ module.exports = function (db) {
     }
   });
 
-  // Approve application and send email
+  // Modified approve endpoint to use getNextAppPetId
   application.post("/:id/approve", async (req, res) => {
     const appId = req.params.id;
-    const { email } = req.body; // Email address for the adopter
 
     try {
       const appRef = db
@@ -182,9 +161,16 @@ module.exports = function (db) {
       }
 
       const applicationData = appDoc.data();
-      const appPetID = Math.floor(10000 + Math.random() * 90000); // Generate a 5-digit appPetID
-      applicationData.status = "Approved"; // Update status
-      applicationData.appPetID = appPetID; // Assign appPetID
+      const email = applicationData.applicant?.email; // Extract email from applicationData
+
+      if (!email) {
+        return res.status(400).json({ message: "Applicant email not found" });
+      }
+
+      // Get the next AppPetID and set status to "Approved"
+      const appPetID = await getNextAppPetId();
+      applicationData.status = "Approved";
+      applicationData.appPetID = appPetID;
 
       // Move the application to the APPROVED collection
       await db
@@ -197,31 +183,64 @@ module.exports = function (db) {
       // Delete the application from the PENDING collection
       await appRef.delete();
 
-      // Send approval email
-      const mailOptions = {
-        from: '"Pet Adoption" <your_email@gmail.com>',
-        to: email,
-        subject: "Application Approved!",
-        text: `Congratulations! Your application has been approved. Your unique Pet ID is: ${appPetID}.`,
-        html: `<p>Congratulations! Your application has been approved. Your unique Pet ID is: <strong>${appPetID}</strong>.</p>`,
-      };
-
-      await transporter.sendMail(mailOptions);
-      console.log(`Approval email sent to ${email} with appPetID: ${appPetID}`);
+      // Send the approval email
+      await sendApprovalEmail(email, applicationData);
 
       res.json({
-        message:
-          "Application approved and moved to APPROVED status, email sent.",
+        message: "Application approved and moved to APPROVED status",
         appPetID,
       });
     } catch (error) {
-      console.error("Error approving application or sending email:", error);
+      console.error("Error approving application:", error);
       res.status(500).json({
-        message: "Error approving application or sending email",
+        message: "Error approving application",
         error: error.message,
       });
     }
   });
+
+  // Helper function to send approval email
+  async function sendApprovalEmail(email, applicationData) {
+    // Prepare email content
+    const mailOptions = {
+      from: "barkcodecompawnion@gmail.com",
+      to: email,
+      subject: "Your Pet Adoption Application Has Been Approved!",
+      html: `
+        <h1>Congratulations! Your Application Has Been Approved</h1>
+        <p>Dear ${applicationData.applicant?.name || "Valued Applicant"},</p>
+        <p>We are pleased to inform you that your pet adoption application has been approved!</p>
+        <p><strong>Your Application Details:</strong></p>
+        <ul>
+          <li>Application ID: ${applicationData.applicationAppId}</li>
+          <li>Application Pet ID: ${applicationData.appPetID}</li>
+        </ul>
+        <p>Please keep your Application Pet ID safe as you'll need it for future reference.</p>
+        <p>Next Steps:</p>
+        <ol>
+          <li>Please visit our center during operating hours</li>
+          <li>Bring your Application Pet ID: ${applicationData.appPetID}</li>
+          <li>Bring a valid government ID</li>
+          <li>Complete the final adoption paperwork</li>
+        </ol>
+        <p>If you have any questions, please don't hesitate to contact us.</p>
+        <p>Thank you for choosing to adopt!</p>
+      `,
+    };
+
+    // Send the email
+    await transporter.sendMail(mailOptions);
+
+    // Log the email in the database
+    await db.collection("EmailLogs").add({
+      applicationId: applicationData.applicationAppId,
+      appPetID: applicationData.appPetID,
+      recipientEmail: email,
+      sentAt: new Date(),
+      status: "sent",
+      type: "approval_notification",
+    });
+  }
 
   application.put("/:id/reject", async (req, res) => {
     const appId = req.params.id;
