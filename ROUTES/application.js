@@ -47,7 +47,7 @@ module.exports = function (db) {
   }
 
   application.post("/", async (req, res) => {
-    const appData = req.body; // Get the incoming data
+    const appData = req.body; // Includes applicant details and petId
 
     try {
       const {
@@ -67,11 +67,14 @@ module.exports = function (db) {
         },
         veterinaryClinicName,
         applicant,
+        petId, // Get the petId from the request body
       } = appData;
 
-      console.log("Received data:", appData);
+      if (!petId) {
+        return res.status(400).json({ message: "Pet ID is required" });
+      }
 
-      // Get the next auto-incremented Application ID
+      // Generate application ID
       const appId = await getNextAppId();
       const formattedAppId = appId.toString().padStart(3, "0");
 
@@ -93,19 +96,20 @@ module.exports = function (db) {
         },
         veterinaryClinicName,
         applicant,
+        petData: { id: petId }, // Include the petId here
         status: "Pending", // Set status to "Pending"
       };
 
-      // Add the new application document under the "PENDING" document
+      // Add the new application under "PENDING"
       const appRef = db
-        .collection("Applications") // Collection "Applications"
-        .doc("PENDING") // Document "PENDING"
-        .collection("Applications") // Sub-collection "Applications" under "PENDING"
-        .doc(formattedAppId); // Use formatted AppId as document ID
+        .collection("Applications")
+        .doc("PENDING")
+        .collection("Applications")
+        .doc(formattedAppId);
 
-      await appRef.set(newApplication); // Save the application data
-
+      await appRef.set(newApplication);
       console.log("Application added with ID:", formattedAppId);
+
       return res
         .status(201)
         .send({ message: `Application added with ID: ${formattedAppId}` });
@@ -113,7 +117,7 @@ module.exports = function (db) {
       console.error("Error occurred while processing the request:", error);
       return res
         .status(500)
-        .json({ message: "Error adding an application", error: error.message });
+        .json({ message: "Error adding application", error: error.message });
     }
   });
 
@@ -146,28 +150,37 @@ module.exports = function (db) {
 
   // Modified approve endpoint to use getNextAppPetId
   application.post("/:id/approve", async (req, res) => {
-    const appId = req.params.id;
+    const appId = req.params.id; // Get the application ID from the URL
 
     try {
+      // Fetch the application document from the PENDING collection
       const appRef = db
         .collection("Applications")
         .doc("PENDING")
         .collection("Applications")
         .doc(appId);
 
-      const appDoc = await appRef.get();
+      const appDoc = await appRef.get(); // Get the application data
       if (!appDoc.exists) {
         return res.status(404).json({ message: "Application not found" });
       }
 
       const applicationData = appDoc.data();
-      const email = applicationData.applicant?.email; // Extract email from applicationData
+      const email = applicationData.applicant?.email; // Get applicant email
 
       if (!email) {
         return res.status(400).json({ message: "Applicant email not found" });
       }
 
-      // Get the next AppPetID and set status to "Approved"
+      // **Check if petData.id exists in the application, if not, stop the process**
+      const petId = applicationData.petData?.id; // petData.id is where the petId is stored
+      if (!petId) {
+        return res
+          .status(400)
+          .json({ message: "Pet ID is missing in the application." });
+      }
+
+      // Generate the next AppPetID
       const appPetID = await getNextAppPetId();
       applicationData.status = "Approved";
       applicationData.appPetID = appPetID;
@@ -183,15 +196,55 @@ module.exports = function (db) {
       // Delete the application from the PENDING collection
       await appRef.delete();
 
-      // Send the approval email
+      // 1. Send the approval email (this comes before transferring the pet)
       await sendApprovalEmail(email, applicationData);
 
+      // 2. Transfer the pet once the application is approved
+      // Transfer the pet to AdoptedAnimals in Firestore with appPetID as the document ID and petId as a field
+      const petRef = db.collection("RescuedAnimals").doc(petId); // Pet in RescuedAnimals collection
+      const petDoc = await petRef.get();
+
+      if (!petDoc.exists) {
+        throw new Error("Pet not found in RescuedAnimals.");
+      }
+
+      // Extract pet data if needed
+      const petData = petDoc.data(); // Get the pet's original data
+
+      // Delete the pet from RescuedAnimals
+      await petRef.delete();
+
+      // In AdoptedAnimals, use appPetID as the document ID and save petId as a field inside
+      await db
+        .collection("AdoptedAnimals")
+        .doc(appPetID.toString())
+        .set({
+          petId: petId, // Save petId as a field in the document
+          ...petData, // Include pet details as needed
+        });
+
+      // Send a success response
       res.json({
-        message: "Application approved and moved to APPROVED status",
+        message:
+          "Application approved, pet transferred to AdoptedAnimals with only appPetID and petId, and email sent.",
         appPetID,
       });
     } catch (error) {
       console.error("Error approving application:", error);
+
+      // Handle errors by moving the application back to PENDING if necessary
+      if (
+        error.message === "Pet ID is missing in the application." ||
+        error.message === "Pet not found in RescuedAnimals."
+      ) {
+        // Ensure the application stays in the PENDING collection
+        const applicationData = await appRef.get();
+        if (applicationData.exists) {
+          applicationData.data().status = "Pending"; // Restore status to Pending
+          await appRef.set(applicationData.data()); // Update the status back to Pending
+        }
+      }
+
       res.status(500).json({
         message: "Error approving application",
         error: error.message,
