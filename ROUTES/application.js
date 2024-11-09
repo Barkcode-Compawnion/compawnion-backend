@@ -200,7 +200,7 @@ module.exports = function (db) {
       await sendApprovalEmail(email, applicationData);
 
       // 2. Transfer the pet once the application is approved
-      // Transfer the pet to AdoptedAnimals in Firestore with appPetID as the document ID and petId as a field
+      // Transfer the pet to AdoptedAnimals in Firestore with appPetID as the document ID and petId as a sub-collection
       const petRef = db.collection("RescuedAnimals").doc(petId); // Pet in RescuedAnimals collection
       const petDoc = await petRef.get();
 
@@ -214,12 +214,17 @@ module.exports = function (db) {
       // Delete the pet from RescuedAnimals
       await petRef.delete();
 
-      // In AdoptedAnimals, use appPetID as the document ID and save petId as a field inside
-      await db
+      // In AdoptedAnimals, use appPetID as the document ID and create a sub-collection "pet" with petId as the document ID
+      const adoptedAnimalRef = db
         .collection("AdoptedAnimals")
-        .doc(appPetID.toString())
+        .doc(appPetID.toString());
+
+      // Create a sub-collection "pet" under the adopted animal document
+      await adoptedAnimalRef
+        .collection("pet")
+        .doc(petId)
         .set({
-          petId: petId, // Save petId as a field in the document
+          petId: petId, // Save petId as a field inside the sub-collection document
           ...petData, // Include pet details as needed
         });
 
