@@ -6,6 +6,15 @@ const Compawnions = express.Router();
 
 const secretKey = "sikretolangto"; // Replace with your secret key
 
+// Configure nodemailer transporter with direct settings
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: "barkcodecompawnion@gmail.com", // Replace with actual email
+    pass: "fmji xuvs akpb mrke", // Replace with actual app password
+  },
+});
+
 /**
  * @param {import('firebase-admin/firestore').Firestore} db
  * @param {import('@google-cloud/storage').Bucket} storage
@@ -37,14 +46,42 @@ module.exports = function (db, storage) {
       throw new Error("Failed to generate new Companion ID.");
     }
   }
+
+  // Function to send registration email to the Compawnion user
+  async function sendCompawnionRegistrationEmail(
+    email,
+    username,
+    name,
+    password
+  ) {
+    const mailOptions = {
+      from: "barkcodecompawnion@gmail.com", // Replace with actual email
+      to: email,
+      subject: "Compawnion Registration Successful",
+      html: `
+        <h1>Welcome to Compawnion!</h1>
+        <p>Dear ${name},</p>
+        <p>Your account has been successfully registered. Here are your details:</p>
+        <ul>
+          <li><strong>Name:</strong> ${name}</li>
+          <li><strong>Username:</strong> ${username}</li>
+          <li><strong>Email:</strong> ${email}</li>
+          <li><strong>Initial Password:</strong> ${password}</li>
+        </ul>
+        <p>Please keep your password safe.</p>
+        <p>We look forward to working with you!</p>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+  }
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Register Companion (Basic Information)
-  // Register Companion
   Compawnions.post("/register", async (req, res) => {
     console.log(req.body); // Log the request payload to check the data
     const {
-      accountCreate: { Username, Email, Password },
+      accountCreate: { Name, Username, Email, Password },
       appPetID, // New parameter added to receive the appPetID
     } = req.body;
 
@@ -72,6 +109,9 @@ module.exports = function (db, storage) {
       if (!existingUserSnapshot.empty) {
         return res.status(400).json({ message: "Username already exists." });
       }
+
+      // Send registration email with the plain password before hashing
+      await sendCompawnionRegistrationEmail(Email, Username, Name, Password);
 
       // Hash the password before storing it
       const hashedPassword = await bcrypt.hash(Password, 10);
@@ -101,8 +141,11 @@ module.exports = function (db, storage) {
         message: `Companion registered successfully with ID: ${formattedCompId}`,
       });
     } catch (error) {
-      console.error("Error registering companion:", error);
-      res.status(500).json({ message: "Failed to register companion." });
+      console.error("Error registering companion:", error); // Log the error
+      res.status(500).json({
+        message: "Failed to register companion.",
+        error: error.message,
+      });
     }
   });
 
@@ -291,6 +334,51 @@ module.exports = function (db, storage) {
       res.status(500).json({ message: "Error retrieving Companion." });
     }
   });
+
+  // Get the adopted animal owned by the Companion using their appPetID
+  Compawnions.get("/myPets/:companionId", async (req, res) => {
+    const { companionId } = req.params; // Get companionId from the URL params
+
+    try {
+      // Retrieve Companion document by companionId
+      const companionRef = db.collection("Compawnions").doc(companionId);
+      const companionDoc = await companionRef.get();
+
+      if (!companionDoc.exists) {
+        return res.status(404).json({ message: "Companion not found." });
+      }
+
+      // Get the appPetID from the Companion document
+      const appPetID = companionDoc.data().CompawnionUser.appPetID;
+
+      if (!appPetID) {
+        return res
+          .status(404)
+          .json({
+            message: "No adopted animal associated with this companion.",
+          });
+      }
+
+      // Now, make a request to the adoptedAnimals route to get the adopted animal
+      // Using the already existing method in adoptedAnimals.js to fetch the adopted animal by appPetID
+      const adoptedAnimalRef = db.collection("AdoptedAnimals").doc(appPetID);
+      const adoptedAnimalDoc = await adoptedAnimalRef.get();
+
+      if (!adoptedAnimalDoc.exists) {
+        return res.status(404).json({ message: "Adopted animal not found." });
+      }
+
+      // Return the adopted animal data
+      res.json({
+        message: "Adopted animal retrieved successfully.",
+        data: adoptedAnimalDoc.data(),
+      });
+    } catch (error) {
+      console.error("Error retrieving adopted animal:", error);
+      res.status(500).json({ message: "Error retrieving adopted animal." });
+    }
+  });
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

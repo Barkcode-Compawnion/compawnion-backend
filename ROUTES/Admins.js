@@ -1,7 +1,7 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
-const cron = require("node-cron");
+const nodemailer = require("nodemailer");
 const Admins = express.Router();
 
 const secretKey = "sikretolangto"; // Replace with your secret key
@@ -12,6 +12,15 @@ const secretKey = "sikretolangto"; // Replace with your secret key
  * @returns {express.Router}
  */
 module.exports = function (db, storage) {
+  // Configure nodemailer transporter with direct settings
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: "barkcodecompawnion@gmail.com", // Replace with actual email
+      pass: "fmji xuvs akpb mrke", // Replace with actual app password
+    },
+  });
+
   // Function to get and increment the next Admin ID automatically
   async function getNextAdminId() {
     const counterRef = db.collection("Counter").doc("AdminIDCounter");
@@ -37,6 +46,32 @@ module.exports = function (db, storage) {
       console.error("Error generating new Admin ID:", error);
       throw error;
     }
+  }
+
+  async function sendAdminRegistrationEmail(email, adminId, name, password) {
+    // Optional: generate a temporary password if you don't want to send the real password
+    const tempPassword = password; // In this case, we are sending the original password.
+    const mailOptions = {
+      from: "barkcodecompawnion@gmail.com",
+      to: email,
+      subject: "Admin Registration Successful",
+      html: `
+        <h1>Welcome to Compawnion!</h1>
+        <p>Dear ${name},</p>
+        <p>Your account has been successfully registered as an admin. Here are your details:</p>
+        <ul>
+          <li><strong>Admin ID:</strong> ${adminId}</li>
+          <li><strong>Name:</strong> ${name}</li>
+          <li><strong>Email:</strong> ${email}</li>
+          <li><strong>Initial Password:</strong> ${tempPassword}</li>
+        </ul>
+        <p>Please keep your password safe.</p>
+        <p>If you did not create this account, please contact support immediately.</p>
+        <p>We look forward to working with you!</p>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -69,14 +104,12 @@ module.exports = function (db, storage) {
     let Picture = null;
     if (Image) {
       try {
-        // Create a buffer from the base64 string
         const type = Image.match(
           /data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/
         )[1];
         const data = Image.replace(/^data:image\/\w+;base64,/, "");
         const buffer = Buffer.from(data, "base64");
 
-        // Upload the image to Firebase Storage
         const file = storage.file(`Admins/${Username}.${type.split("/")[1]}`);
         await file.save(buffer, { contentType: type });
         Picture = `https://compawnion-backend.onrender.com/media/Admins/${Username}.${
@@ -98,13 +131,16 @@ module.exports = function (db, storage) {
         return res.status(400).json({ message: "Username already exists." });
       }
 
-      // Hash the password before storing it
-      const hashedPassword = await bcrypt.hash(Password, 10);
-      const token = jwt.sign({ Username }, secretKey, { expiresIn: "1h" });
-
       // Call to get the next Admin ID
       const AdminId = await getNextAdminId();
       const formattedAdminId = AdminId.toString().padStart(3, "0");
+
+      // Send the registration email with the plain password first
+      await sendAdminRegistrationEmail(Email, formattedAdminId, Name, Password);
+
+      // Now hash the password before storing it
+      const hashedPassword = await bcrypt.hash(Password, 10);
+      const token = jwt.sign({ Username }, secretKey, { expiresIn: "1h" });
 
       // Add the new Admin document without saving AdminId
       await db

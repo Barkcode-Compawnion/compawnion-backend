@@ -60,6 +60,8 @@ const compawnionRoute = require("./ROUTES/Compawnions")(db, storage);
 const raRoute = require("./ROUTES/ra")(db, storage);
 const superadminRoute = require("./ROUTES/superadmin")(db, storage);
 const adoptedAnimalsRoute = require("./ROUTES/adoptedAnimals")(db, storage);
+const pdfcontractRoute = require("./ROUTES/pdfcontract")(db, storage);
+
 
 app.use("/Admins", adminRoute);
 app.use("/application", applicationRoute);
@@ -67,6 +69,10 @@ app.use("/Compawnions", compawnionRoute);
 app.use("/ra", raRoute);
 app.use("/superadmin", superadminRoute);
 app.use("/adoptedAnimals", adoptedAnimalsRoute);
+app.use("/pdfcontract", pdfcontractRoute);
+
+
+
 
 // Root route
 app.get("/", (req, res) => {
