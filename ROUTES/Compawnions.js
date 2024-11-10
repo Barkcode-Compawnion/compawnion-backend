@@ -45,9 +45,24 @@ module.exports = function (db, storage) {
     console.log(req.body); // Log the request payload to check the data
     const {
       accountCreate: { Username, Email, Password },
+      appPetID, // New parameter added to receive the appPetID
     } = req.body;
 
+    if (!appPetID) {
+      return res.status(400).json({ message: "appPetID is required." });
+    }
+
     try {
+      // Check if the appPetID exists in the AdoptedAnimals collection
+      const adoptedAnimalRef = db.collection("AdoptedAnimals").doc(appPetID);
+      const adoptedAnimalDoc = await adoptedAnimalRef.get();
+
+      if (!adoptedAnimalDoc.exists) {
+        return res
+          .status(404)
+          .json({ message: "Invalid appPetID. Adoption not found." });
+      }
+
       // Check if the username already exists
       const existingUserSnapshot = await db
         .collection("Compawnions")
@@ -75,6 +90,7 @@ module.exports = function (db, storage) {
             MedSched: [],
             TrustedVet: [],
             CompawnionSched: [],
+            appPetID, // Store the appPetID as part of the Companion document
           },
           Status: "Inactive", // Set initial status to Inactive
           LastLogin: null,

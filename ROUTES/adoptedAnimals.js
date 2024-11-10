@@ -7,27 +7,42 @@ const adoptedAnimals = express.Router();
  * @returns {express.Router}
  */
 module.exports = function (db, storage) {
+  
+  // Endpoint to get all adopted animals, showing all pets under their respective appPetIDs
   adoptedAnimals.get("/", async (req, res) => {
     try {
       const snapshot = await db.collection("AdoptedAnimals").get();
-      const animals = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const animals = snapshot.docs.map((doc) => ({
+        appPetID: doc.id,
+        pets: doc.data(),
+      }));
       res.json(animals);
     } catch (error) {
       res.status(500).json({ message: "Error retrieving adopted animals", error });
     }
   });
 
-  adoptedAnimals.get("/:id", async (req, res) => {
+  // Endpoint to get a specific adopted animal by appPetID and petId
+  adoptedAnimals.get("/:appPetID/:petId", async (req, res) => {
+    const { appPetID, petId } = req.params;
+
     try {
-      const animalId = req.params.id;
-      const animalRef = db.collection("AdoptedAnimals").doc(animalId);
-      const doc = await animalRef.get();
+      // Fetch the AdoptedAnimals document by appPetID
+      const adoptedAnimalRef = db.collection("AdoptedAnimals").doc(appPetID);
+      const doc = await adoptedAnimalRef.get();
 
       if (!doc.exists) {
-        res.status(404).json({ message: "Adopted animal not found" });
-      } else {
-        res.json({ id: doc.id, ...doc.data() });
+        return res.status(404).json({ message: "Adopted animal not found" });
       }
+
+      // Fetch the specific pet by its petId field within the appPetID document
+      const petData = doc.data()[petId];
+
+      if (!petData) {
+        return res.status(404).json({ message: "Pet not found in this adoption" });
+      }
+
+      res.json({ petId, ...petData });
     } catch (error) {
       res.status(500).json({ message: "Error retrieving adopted animal", error });
     }
