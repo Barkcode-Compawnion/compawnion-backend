@@ -219,6 +219,7 @@ module.exports = function (db, storage) {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   // Login Companion
+  // Login Companion
   Compawnions.post("/login", async (req, res) => {
     const { Username, Password } = req.body;
 
@@ -245,6 +246,26 @@ module.exports = function (db, storage) {
 
       if (!isMatch) {
         return res.status(401).json({ message: "Invalid credentials." });
+      }
+
+      // Check if the appPetID exists in the AdoptedAnimals collection
+      const appPetID = userData.CompawnionUser.appPetID;
+
+      if (!appPetID) {
+        return res
+          .status(400)
+          .json({ message: "No associated pet found for this companion." });
+      }
+
+      const adoptedAnimalRef = db.collection("AdoptedAnimals").doc(appPetID);
+      const adoptedAnimalDoc = await adoptedAnimalRef.get();
+
+      if (!adoptedAnimalDoc.exists) {
+        return res
+          .status(404)
+          .json({
+            message: "No adopted animal found with the provided appPetID.",
+          });
       }
 
       // Update the user's status and last login timestamp
@@ -352,11 +373,9 @@ module.exports = function (db, storage) {
       const appPetID = companionDoc.data().CompawnionUser.appPetID;
 
       if (!appPetID) {
-        return res
-          .status(404)
-          .json({
-            message: "No adopted animal associated with this companion.",
-          });
+        return res.status(404).json({
+          message: "No adopted animal associated with this companion.",
+        });
       }
 
       // Now, make a request to the adoptedAnimals route to get the adopted animal
