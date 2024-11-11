@@ -260,7 +260,6 @@ module.exports = function (db) {
         paymentAgreement,
         petOwnershipExperience,
         dwelling: {
-          petBreeds,
           planningToMoveOut,
           ownership,
           numberOfPets,
@@ -269,7 +268,7 @@ module.exports = function (db) {
           dwellingType,
         },
         veterinaryClinicName,
-        applicant,
+        applicant: { name, street, lot, email, phone  },
         petId, // Get the petId from the request body
         appPetID, // Existing appPetID for subsequent adoption (optional)
       } = appData;
@@ -295,7 +294,6 @@ module.exports = function (db) {
         applicationAppId: formattedAppId,
         petOwnershipExperience,
         dwelling: {
-          petBreeds,
           planningToMoveOut,
           ownership,
           numberOfPets,
@@ -304,7 +302,7 @@ module.exports = function (db) {
           dwellingType,
         },
         veterinaryClinicName,
-        applicant,
+        applicant: { name, street, lot, email, phone  },
         petData: { id: petId }, // Include the petId here
         appPetID: appPetID || null, // Set appPetID to null if not provided
         status: "Pending",

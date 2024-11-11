@@ -159,8 +159,8 @@ module.exports = function (db) {
 
         // Insert the signature image into the PDF, adjusting its size and position
         pdfDoc
-          .image(imgBuffer, pdfDoc.x + 110, pdfDoc.y - 75, {
-            width: 180,
+          .image(imgBuffer, pdfDoc.x + 70, pdfDoc.y - 75, {
+            width: 200,
             height: 80,
           }) // Adjust the position and size
           .moveDown();
