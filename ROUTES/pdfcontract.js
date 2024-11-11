@@ -2,6 +2,7 @@ const express = require("express");
 const pdfcontract = express.Router();
 const PDFDocument = require("pdfkit");
 const fs = require("fs"); // For saving PDF locally
+const path = require("path");
 
 /**
  * @param {import('firebase-admin/firestore').Firestore} db
@@ -10,6 +11,7 @@ const fs = require("fs"); // For saving PDF locally
 module.exports = function (db) {
   pdfcontract.post("/generate-contract/:id", async (req, res) => {
     const { id } = req.params;
+    const { signature } = req.body; // Capture the base64 signature image
 
     if (!id) {
       return res.status(400).json({ message: "Application ID is required" });
@@ -31,7 +33,9 @@ module.exports = function (db) {
       const { name, email, phone, petData } = appData;
 
       if (!petData || !petData.id) {
-        return res.status(404).json({ message: "Pet data or Pet ID not found in application" });
+        return res
+          .status(404)
+          .json({ message: "Pet data or Pet ID not found in application" });
       }
 
       const petId = petData.id;
@@ -42,14 +46,18 @@ module.exports = function (db) {
         .get();
 
       if (!rescuedAnimalDoc.exists) {
-        return res.status(404).json({ message: "Pet not found in RescuedAnimals" });
+        return res
+          .status(404)
+          .json({ message: "Pet not found in RescuedAnimals" });
       }
 
       const rescuedAnimalData = rescuedAnimalDoc.data();
       const { personal, background, rfidTag } = rescuedAnimalData;
 
       if (!personal || !personal.name || !personal.breed || !rfidTag) {
-        return res.status(404).json({ message: "Incomplete pet details in RescuedAnimals" });
+        return res
+          .status(404)
+          .json({ message: "Incomplete pet details in RescuedAnimals" });
       }
 
       const currentDate = new Date().toLocaleDateString();
@@ -62,7 +70,13 @@ module.exports = function (db) {
         Pet Name: ${personal.name}
         Type: ${personal.type || "N/A"}
         Breed: ${personal.breed}
-        Age: ${personal.age ? `${personal.age.year || 0} years ${personal.age.month || 0} months` : "N/A"}
+        Age: ${
+          personal.age
+            ? `${personal.age.year || 0} years ${
+                personal.age.month || 0
+              } months`
+            : "N/A"
+        }
         RFID Tag: ${rfidTag}
         
         Rescue Details:
@@ -75,7 +89,9 @@ module.exports = function (db) {
         ${medicalHistory
           .map(
             (record) =>
-              `- Procedure: ${record.procedure || "N/A"}, Date: ${record.date || "N/A"}, Notes: ${record.notes || "N/A"}`
+              `- Procedure: ${record.procedure || "N/A"}, Date: ${
+                record.date || "N/A"
+              }, Notes: ${record.notes || "N/A"}`
           )
           .join("\n")}
         
@@ -83,7 +99,9 @@ module.exports = function (db) {
         ${vaccinationHistory
           .map(
             (vaccine) =>
-              `- Vaccine: ${vaccine.name || "N/A"}, Date: ${vaccine.date || "N/A"}, Expiry: ${vaccine.expiry || "N/A"}`
+              `- Vaccine: ${vaccine.name || "N/A"}, Date: ${
+                vaccine.date || "N/A"
+              }, Expiry: ${vaccine.expiry || "N/A"}`
           )
           .join("\n")}
       `;
@@ -93,11 +111,17 @@ module.exports = function (db) {
 
       // Stream the PDF as a response
       res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", 'attachment; filename="adoption-contract.pdf"');
+      res.setHeader(
+        "Content-Disposition",
+        'attachment; filename="adoption-contract.pdf"'
+      );
       pdfDoc.pipe(res);
 
       // Add content to PDF
-      pdfDoc.fontSize(16).text("Compawnion AMS Adoption Contract", { align: "center" }).moveDown();
+      pdfDoc
+        .fontSize(16)
+        .text("Compawnion AMS Adoption Contract", { align: "center" })
+        .moveDown();
 
       pdfDoc
         .fontSize(12)
@@ -123,14 +147,33 @@ module.exports = function (db) {
         .text(`• Full Name: ${name}\n`)
         .text(`• Phone Number: ${phone}\n`)
         .text(`• Email Address: ${email}\n\n`)
-        .text(`Adopter’s Signature:\n• Signature: ___________________________\n• Date: ${currentDate}`);
+        .text(
+          `Adopter’s Signature:\n\n\n\n• Signature: ___________________________\n• Date: ${currentDate}`
+        );
+
+      // Check if signature exists and is a valid base64 string
+      if (signature && signature.startsWith("data:image")) {
+        // Embed the signature as an image in the PDF
+        const imgData = signature.split(";base64,")[1]; // Extract the base64 data
+        const imgBuffer = Buffer.from(imgData, "base64");
+
+        // Insert the signature image into the PDF, adjusting its size and position
+        pdfDoc
+          .image(imgBuffer, pdfDoc.x + 110, pdfDoc.y - 75, {
+            width: 180,
+            height: 80,
+          }) // Adjust the position and size
+          .moveDown();
+      }
 
       // Finalize the PDF
       pdfDoc.end();
     } catch (error) {
       console.error("Error generating contract:", error.message);
       console.error("Stack Trace:", error.stack); // Logs the error stack trace
-      res.status(500).json({ message: "Failed to generate contract", error: error.message });
+      res
+        .status(500)
+        .json({ message: "Failed to generate contract", error: error.message });
     }
   });
 

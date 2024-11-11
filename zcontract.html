@@ -4,6 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Generate Adoption Contract</title>
+  <style>
+    /* Canvas styles */
+    #signatureCanvas {
+      border: 1px solid #000;
+      width: 100%;
+      height: 200px;
+    }
+  </style>
 </head>
 <body>
   <h1>Adoption Contract Generator</h1>
@@ -11,16 +19,83 @@
   <!-- Button to trigger the contract generation -->
   <button id="generateContractBtn">Generate Adoption Contract</button>
 
+  <div>
+    <h3>Adopter's Signature:</h3>
+    <canvas id="signatureCanvas"></canvas>
+    <br>
+    <button id="clearSignatureBtn">Clear Signature</button>
+  </div>
+
   <script>
-    // Add an event listener to the button
+    // Signature Canvas setup
+    const canvas = document.getElementById("signatureCanvas");
+    const ctx = canvas.getContext("2d");
+    let isDrawing = false;
+
+    // Resize canvas to fit full width of container
+    canvas.width = window.innerWidth - 20;
+    canvas.height = 200;
+
+    // Start drawing
+    canvas.addEventListener("mousedown", startDrawing);
+    canvas.addEventListener("mousemove", draw);
+    canvas.addEventListener("mouseup", stopDrawing);
+    canvas.addEventListener("mouseleave", stopDrawing);
+
+    // Handle touch events for mobile compatibility
+    canvas.addEventListener("touchstart", startDrawing);
+    canvas.addEventListener("touchmove", draw);
+    canvas.addEventListener("touchend", stopDrawing);
+    canvas.addEventListener("touchcancel", stopDrawing);
+
+    function startDrawing(event) {
+      isDrawing = true;
+      ctx.beginPath();
+      const { x, y } = getCoordinates(event);
+      ctx.moveTo(x, y);
+    }
+
+    function draw(event) {
+      if (!isDrawing) return;
+      const { x, y } = getCoordinates(event);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+
+    function stopDrawing() {
+      isDrawing = false;
+    }
+
+    // Get correct coordinates depending on mouse or touch events
+    function getCoordinates(event) {
+      const rect = canvas.getBoundingClientRect();
+      const x = event.touches ? event.touches[0].clientX : event.clientX;
+      const y = event.touches ? event.touches[0].clientY : event.clientY;
+      return {
+        x: x - rect.left,
+        y: y - rect.top
+      };
+    }
+
+    // Clear the signature
+    document.getElementById("clearSignatureBtn").addEventListener("click", () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    });
+
+    // Add event listener to the contract generation button
     document.getElementById("generateContractBtn").addEventListener("click", function() {
       const appId = prompt("Enter the Application ID:");
+      const signatureData = canvas.toDataURL("image/png"); // Convert canvas to base64 image
 
       // Make sure the user provided an Application ID
       if (appId) {
         // Send a request to your server to generate the contract PDF
         fetch(`http://localhost:3000/pdfcontract/generate-contract/${appId}`, {
           method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ signature: signatureData })
         })
         .then(response => {
           if (response.ok) {
