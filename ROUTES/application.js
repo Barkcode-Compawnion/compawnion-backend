@@ -252,25 +252,47 @@ module.exports = function (db) {
   // POST Routes
   application.post("/", async (req, res) => {
     const appData = req.body; // Includes applicant details, petId, and potentially appPetID for subsequent adoption
-
     try {
       const {
-        applicationType,
-        agreement,
+        termsAndCondission,
         paymentAgreement,
-        petOwnershipExperience,
+        applicationType,
+        appPetID, // Existing appPetID for subsequent adoption (optional)
+        petId, // Get the petId from the request body
+        applicant: {
+          name: {
+            firstName,
+            middleName,
+            lastName
+          },
+          birthdate,
+          occupation,
+          address: {
+            country,
+            province,
+            cityOrMunicipality,
+            baranggay,
+            street,
+            lot
+          },
+          contact: {
+            email,
+            phoneNumber,
+            facebook
+          }
+        },
         dwelling: {
-          planningToMoveOut,
+          type,
           ownership,
+          numberOfHouseMembers,
           numberOfPets,
           petsAllowedInHouse,
-          numberOfHouseMembers,
-          dwellingType,
+          planningToMoveOut
         },
-        veterinaryClinicName,
-        applicant: { name, street, lot, email, phone  },
-        petId, // Get the petId from the request body
-        appPetID, // Existing appPetID for subsequent adoption (optional)
+        petCare: {
+          petOwnershipExperience,
+          veterinarian
+        }
       } = appData;
 
       if (!petId) {
@@ -288,24 +310,47 @@ module.exports = function (db) {
       const formattedAppId = appId.toString().padStart(3, "0");
 
       const newApplication = {
-        applicationType,
-        agreement,
+        termsAndCondission,
         paymentAgreement,
+        applicationType,
         applicationAppId: formattedAppId,
-        petOwnershipExperience,
+        appPetID: appPetID || null, // Set appPetID to null if not provided
+        petId,
+        applicant: {
+          name: {
+            firstName,
+            middleName,
+            lastName
+          },
+          birthdate,
+          occupation,
+          address: {
+            country,
+            province,
+            cityOrMunicipality,
+            baranggay,
+            street,
+            lot
+          },
+          contact: {
+            email,
+            phoneNumber,
+            facebook
+          }
+        },
         dwelling: {
-          planningToMoveOut,
+          type,
           ownership,
+          numberOfHouseMembers,
           numberOfPets,
           petsAllowedInHouse,
-          numberOfHouseMembers,
-          dwellingType,
+          planningToMoveOut
         },
-        veterinaryClinicName,
-        applicant: { name, street, lot, email, phone  },
-        petData: { id: petId }, // Include the petId here
-        appPetID: appPetID || null, // Set appPetID to null if not provided
-        status: "Pending",
+        petCare: {
+          petOwnershipExperience,
+          veterinarian
+        },
+        status: "Pending"
       };
 
       // Add the new application under "PENDING"
