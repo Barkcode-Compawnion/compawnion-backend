@@ -52,9 +52,9 @@ module.exports = function (db) {
       }
 
       const rescuedAnimalData = rescuedAnimalDoc.data();
-      const { personal, background, rfidTag } = rescuedAnimalData;
+      const { personal, background } = rescuedAnimalData;
 
-      if (!personal || !personal.name || !personal.breed || !rfidTag) {
+      if (!personal || !personal.name || !personal.breed) {
         return res
           .status(404)
           .json({ message: "Incomplete pet details in RescuedAnimals" });
@@ -77,8 +77,7 @@ module.exports = function (db) {
               } months`
             : "N/A"
         }
-        RFID Tag: ${rfidTag}
-        
+
         Rescue Details:
         - Rescue Date: ${background.rescueDate || "N/A"}
         - Size: ${background.size || "N/A"}
