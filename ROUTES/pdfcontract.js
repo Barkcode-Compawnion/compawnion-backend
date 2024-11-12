@@ -30,7 +30,7 @@ module.exports = function (db) {
       }
 
       const appData = appDoc.data();
-      const { name, email, phone, petData } = appData;
+      const { applicant, petData } = appData;
 
       if (!petData || !petData.id) {
         return res
@@ -143,9 +143,9 @@ module.exports = function (db) {
 
       pdfDoc
         .text(`Adopter’s Information:\n`, { underline: true })
-        .text(`• Full Name: ${name}\n`)
-        .text(`• Phone Number: ${phone}\n`)
-        .text(`• Email Address: ${email}\n\n`)
+        .text(`• Full Name: ${applicant.name}\n`)
+        .text(`• Phone Number: ${applicant.phone}\n`)
+        .text(`• Email Address: ${applicant.email}\n\n`)
         .text(
           `Adopter’s Signature:\n\n\n\n• Signature: ___________________________\n• Date: ${currentDate}`
         );
