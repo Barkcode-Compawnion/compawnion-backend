@@ -137,7 +137,7 @@ module.exports = function (db, storage) {
       const formattedAdminId = AdminId.toString().padStart(3, "0");
 
       // Send the registration email with the plain password first
-      await sendAdminRegistrationEmail(Email, formattedAdminId, Name, Password);
+      await sendAdminRegistrationEmail(Email, formattedAdminId, Username, Name, Password);
 
       // Now hash the password before storing it
       const hashedPassword = await bcrypt.hash(Password, 10);
