@@ -48,7 +48,7 @@ module.exports = function (db, storage) {
     }
   }
 
-  async function sendAdminRegistrationEmail(email, adminId, name, password) {
+  async function sendAdminRegistrationEmail(email, adminId, username, name, password) {
     // Optional: generate a temporary password if you don't want to send the real password
     const tempPassword = password; // In this case, we are sending the original password.
     const mailOptions = {
@@ -62,6 +62,7 @@ module.exports = function (db, storage) {
         <ul>
           <li><strong>Admin ID:</strong> ${adminId}</li>
           <li><strong>Name:</strong> ${name}</li>
+          <li><strong>Username:</strong> ${username}</li>
           <li><strong>Email:</strong> ${email}</li>
           <li><strong>Initial Password:</strong> ${tempPassword}</li>
         </ul>
