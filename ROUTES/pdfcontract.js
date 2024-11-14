@@ -383,7 +383,7 @@ module.exports = function (db) {
         const appPetID = appData.appPetID;
         const adoptedAnimalDoc = await db
           .collection("AdoptedAnimals")
-          .doc(appPetID.toString())
+          .doc(appPetID.toString()) // Use appPetID for AdoptedAnimals lookup
           .get();
 
         if (!adoptedAnimalDoc.exists) {
@@ -393,10 +393,10 @@ module.exports = function (db) {
         }
 
         const adoptedAnimalData = adoptedAnimalDoc.data();
-        petDoc = { id: petId, ...adoptedAnimalData[petId] }; // Get the pet data inside the appPetID document
+        petDoc = adoptedAnimalData; // Set petDoc to adopted data directly
       }
 
-      const petData = petDoc.exists ? petDoc.data() : petDoc; // Get pet data from Rescued or Adopted document
+      const petData = petDoc.exists ? petDoc.data() : petDoc; // Correctly extract data from petDoc
 
       // Step 3: Create a PDF document
       const doc = new PDFDocument();
@@ -426,13 +426,13 @@ module.exports = function (db) {
         .moveDown(0.5);
       doc
         .fontSize(12)
-        .image(`${petData.petId}`)
-        //.text(`Pet ID: ${petData.personal.picture}`)
         .text(`Name: ${petData.personal.name}`)
         .text(`Type: ${petData.personal.type}`)
         .text(`Breed: ${petData.personal.breed}`)
         .text(`Gender: ${petData.personal.gender}`)
-        .text(`Age: ${petData.personal.age.year}yr ${petData.personal.age.month}months`)
+        .text(
+          `Age: ${petData.personal.age.year}yr ${petData.personal.age.month}months`
+        )
         .text(`Weight: ${petData.background.weight}Kg`)
         .text(`Size: ${petData.background.size}`)
         .text(`Rescued Date: ${petData.background.rescueDate}`)
@@ -518,10 +518,9 @@ module.exports = function (db) {
       doc.end();
     } catch (error) {
       console.error("Error fetching data for /both/:id route:", error.message);
-      res.status(500).json({
-        message: "Failed to generate application form",
-        error: error.message,
-      });
+      res
+        .status(500)
+        .json({ message: "Failed to generate the PDF", error: error.message });
     }
   });
 
