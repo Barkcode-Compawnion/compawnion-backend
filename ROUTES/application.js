@@ -391,7 +391,7 @@ module.exports = function (db) {
         return res.status(404).json({ message: "Application not found" });
 
       const applicationData = appDoc.data();
-      const email = applicationData.applicant?.email;
+      const email = applicationData.applicant?.contact?.email;
       if (!email)
         return res.status(400).json({ message: "Applicant email not found" });
 
@@ -460,7 +460,7 @@ module.exports = function (db) {
         return res.status(404).json({ message: "Application not found" });
 
       const applicationData = appDoc.data();
-      const email = applicationData.applicant?.email;
+      const email = applicationData.applicant?.contact?.email;
       if (!email)
         return res.status(400).json({ message: "Applicant email not found" });
 
@@ -523,11 +523,11 @@ module.exports = function (db) {
         return res.status(404).json({ message: "Application not found" });
 
       const applicationData = appDoc.data();
-      const email = applicationData.applicant?.email;
+      const email = applicationData.applicant?.contact?.email;
       if (!email)
         return res.status(400).json({ message: "Applicant email not found" });
 
-      const petId = applicationData.petData?.id;
+      const petId = applicationData.petId;
       if (!petId)
         return res
           .status(400)

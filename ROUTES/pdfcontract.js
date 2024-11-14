@@ -143,9 +143,13 @@ module.exports = function (db) {
 
       pdfDoc
         .text(`Adopter’s Information:\n`, { underline: true })
-        .text(`• Full Name: ${applicant.name}\n`)
-        .text(`• Phone Number: ${applicant.phone}\n`)
-        .text(`• Email Address: ${applicant.email}\n\n`)
+        .text(
+          `• Full Name: ${applicant.name.firstName} ${
+            applicant.name.middleName || ""
+          } ${applicant.name.lastName}\n`
+        )
+        .text(`• Phone Number: ${applicant.contact?.phoneNumber}\n`)
+        .text(`• Email Address: ${applicant.contact?.email}\n\n`)
         .text(
           `Adopter’s Signature:\n\n\n\n• Signature: ___________________________\n• Date: ${currentDate}`
         );
@@ -174,6 +178,129 @@ module.exports = function (db) {
         .status(500)
         .json({ message: "Failed to generate contract", error: error.message });
     }
+  });
+
+  pdfcontract.post("/appform/:id", (req, res) => {
+    const {
+      termsAndCondission,
+      paymentAgreement,
+      applicationType,
+      appPetID,
+      petId,
+      applicant,
+      dwelling,
+      petCare,
+    } = req.body;
+
+    // Create a new PDF document
+    const doc = new PDFDocument();
+
+    // Configure response to download as a PDF
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="application_form.pdf"'
+    );
+    doc.pipe(res);
+
+    // Title and Pet Information
+    doc
+      .fontSize(20)
+      .text("Compawnion AMS Application Form", { align: "center" })
+      .moveDown();
+    //26
+    doc
+      .fontSize(15)
+      .text("Pet Information:", { underline: true })
+      .moveDown(0.5);
+    doc
+      .fontSize(12)
+      .text(`Pet ID: ${petId}`)
+      .text(`Application Type: ${applicationType}`)
+      .text(`App Pet ID: ${appPetID} || ""`)
+      .moveDown();
+
+    // Applicant Information
+    doc
+      .fontSize(15)
+      .text("Applicant Information:", { underline: true })
+      .moveDown(0.5);
+    doc
+      .fontSize(12)
+      .text(
+        `Name: ${applicant.name.firstName} ${applicant.name.middleName || ""} ${
+          applicant.name.lastName
+        }`
+      )
+
+      .text(`Birthdate: ${applicant.birthdate}`)
+
+      .text(
+        `address: ${applicant.address.street} ${applicant.address.lot} ${applicant.address.baranggay} ${applicant.address.cityOrMunicipality} ${applicant.address.province}, ${applicant.address.country} 
+        }`
+      )
+      .text(`Occupation: ${applicant.occupation}`)
+      .text(`Email: ${applicant.contact.email}`)
+      .text(`Facebook: ${applicant.contact.facebook} || ""`)
+      .text(`Phone Number: ${applicant.contact.phoneNumber}`)
+      .moveDown();
+
+    // Dwelling Information
+    doc
+      .fontSize(15)
+      .text("Dwelling Information:", { underline: true })
+      .moveDown(0.5);
+    doc
+      .fontSize(12)
+      .text(`Type of Dwelling: ${dwelling.type}`)
+      .text(`Ownership: ${dwelling.ownership}`)
+      .text(`Number of House member: ${dwelling.numberOfHouseMembers}`)
+      .text(
+        `Number of Pets in the Household (If any): ${dwelling.numberOfPets}`
+      )
+      .text(
+        `Have you confirmed that you are allowed to have pets in the house?: ${dwelling.petsAllowedInHouse}`
+      )
+      .text(
+        `Are you planning to move out in the next 6 months?: ${dwelling.planningToMoveOut}`
+      )
+      .moveDown();
+
+    // Pet Care Information
+    doc
+      .fontSize(15)
+      .text("Pet Care Information:", { underline: true })
+      .moveDown(0.5);
+    doc
+      .fontSize(12)
+      .text(
+        `Do you have an experience being a pet-owner? ${petCare.petOwnershipExperience}`
+      )
+      .text(`Any Animal Clinic you know? ${petCare.veterinarian}`)
+      .moveDown();
+
+    // Terms and Conditions
+    doc
+      .fontSize(15)
+      .text("Terms and Conditions:", { underline: true })
+      .moveDown(0.5);
+    doc
+      .fontSize(12)
+      .text(`Agreed to Terms and Conditions: ${termsAndCondission}`)
+      .moveDown();
+
+    // Payment Agreement
+    doc
+      .fontSize(15)
+      .text("Payment Agreement:", { underline: true })
+      .moveDown(0.5);
+    doc
+      .fontSize(12)
+      .text(`Agreed to Payment Terms: ${paymentAgreement}`)
+      .moveDown();
+
+    // Finalize PDF and send it as a response
+    doc.end();
   });
 
   return pdfcontract;
