@@ -260,11 +260,7 @@ module.exports = function (db) {
         appPetID, // Existing appPetID for subsequent adoption (optional)
         petId, // Get the petId from the request body
         applicant: {
-          name: {
-            firstName,
-            middleName,
-            lastName
-          },
+          name: { firstName, middleName, lastName },
           birthdate,
           occupation,
           address: {
@@ -273,13 +269,9 @@ module.exports = function (db) {
             cityOrMunicipality,
             baranggay,
             street,
-            lot
+            lot,
           },
-          contact: {
-            email,
-            phoneNumber,
-            facebook
-          }
+          contact: { email, phoneNumber, facebook },
         },
         dwelling: {
           type,
@@ -287,12 +279,9 @@ module.exports = function (db) {
           numberOfHouseMembers,
           numberOfPets,
           petsAllowedInHouse,
-          planningToMoveOut
+          planningToMoveOut,
         },
-        petCare: {
-          petOwnershipExperience,
-          veterinarian
-        }
+        petCare: { petOwnershipExperience, veterinarian },
       } = appData;
 
       if (!petId) {
@@ -320,7 +309,7 @@ module.exports = function (db) {
           name: {
             firstName,
             middleName,
-            lastName
+            lastName,
           },
           birthdate,
           occupation,
@@ -330,13 +319,13 @@ module.exports = function (db) {
             cityOrMunicipality,
             baranggay,
             street,
-            lot
+            lot,
           },
           contact: {
             email,
             phoneNumber,
-            facebook
-          }
+            facebook,
+          },
         },
         dwelling: {
           type,
@@ -344,13 +333,13 @@ module.exports = function (db) {
           numberOfHouseMembers,
           numberOfPets,
           petsAllowedInHouse,
-          planningToMoveOut
+          planningToMoveOut,
         },
         petCare: {
           petOwnershipExperience,
-          veterinarian
+          veterinarian,
         },
-        status: "Pending"
+        status: "Pending",
       };
 
       // Add the new application under "PENDING"
@@ -509,7 +498,7 @@ module.exports = function (db) {
   });
 
   application.post("/:id/approve", async (req, res) => {
-    const appId = req.params.id;
+    const appId = req.params.id; // Get application ID from the route parameters
     try {
       // Fetch the application from the "PENDING" collection
       const appRef = db
@@ -517,25 +506,30 @@ module.exports = function (db) {
         .doc("PENDING")
         .collection("Applications")
         .doc(appId);
+
       const appDoc = await appRef.get();
 
-      if (!appDoc.exists)
+      if (!appDoc.exists) {
         return res.status(404).json({ message: "Application not found" });
+      }
 
-      const applicationData = appDoc.data();
-      const email = applicationData.applicant?.contact?.email;
-      if (!email)
+      const applicationData = appDoc.data(); // Get application data
+      const email = applicationData.applicant?.contact?.email; // Get applicant's email
+
+      if (!email) {
         return res.status(400).json({ message: "Applicant email not found" });
+      }
 
-      const petId = applicationData.petId;
-      if (!petId)
+      const petId = applicationData.petId; // Get the petId from application data
+      if (!petId) {
         return res
           .status(400)
           .json({ message: "Pet ID is missing in the application." });
+      }
 
-      const appPetID = applicationData.appPetID || (await getNextAppPetId());
+      const appPetID = applicationData.appPetID || (await getNextAppPetId()); // Generate appPetID if not provided
 
-      // Check if the application has passed the online and onsite approval
+      // Check if the application is already in a valid status for approval
       if (
         applicationData.status !== "Online Approved" &&
         applicationData.status !== "Waiting for Final Approval"
@@ -547,29 +541,35 @@ module.exports = function (db) {
       }
 
       // Proceed with approval
-      applicationData.status = "Approved";
-      applicationData.appPetID = appPetID;
+      applicationData.status = "Approved"; // Set application status to "Approved"
+      applicationData.appPetID = appPetID; // Assign appPetID
 
-      // Move to the "APPROVED" collection
+      // Move the application to the "APPROVED" collection
       await db
         .collection("Applications")
         .doc("APPROVED")
         .collection("Applications")
         .doc(appId)
         .set(applicationData);
-      await appRef.delete();
+      await appRef.delete(); // Remove application from "PENDING" collection
 
       // Send approval email
       await sendApprovalEmail(email, applicationData);
 
+      // Fetch pet data from "RescuedAnimals" collection
       const petRef = db.collection("RescuedAnimals").doc(petId);
       const petDoc = await petRef.get();
-      if (!petDoc.exists) throw new Error("Pet not found in RescuedAnimals.");
 
-      const petData = petDoc.data();
+      if (!petDoc.exists) {
+        throw new Error("Pet not found in RescuedAnimals.");
+      }
+
+      const petData = petDoc.data(); // Get pet data
+
+      // Remove pet from "RescuedAnimals" collection
       await petRef.delete();
 
-      // Add pet to the AdoptedAnimals collection
+      // Add pet to the "AdoptedAnimals" collection under appPetID
       const adoptedAnimalRef = db
         .collection("AdoptedAnimals")
         .doc(appPetID.toString());
@@ -578,6 +578,7 @@ module.exports = function (db) {
         { merge: true }
       );
 
+      // Respond with success message
       res.json({
         message:
           "Application approved, pet added to AdoptedAnimals under the user’s appPetID, and email sent.",
@@ -587,6 +588,43 @@ module.exports = function (db) {
       console.error("Error approving application:", error);
       res.status(500).json({
         message: "Error approving application",
+        error: error.message,
+      });
+    }
+  });
+
+  application.post("/:appPetID/transferback", async (req, res) => {
+    const appPetID = req.params.appPetID; // Get appPetID from route parameter
+
+    try {
+      // Reference to the specific adopted pet in AdoptedAnimals
+      const adoptedAnimalRef = db.collection("AdoptedAnimals").doc(appPetID);
+      const adoptedAnimalDoc = await adoptedAnimalRef.get();
+
+      if (!adoptedAnimalDoc.exists) {
+        return res.status(404).json({ message: "Adopted pet not found" });
+      }
+
+      const adoptedAnimalData = adoptedAnimalDoc.data();
+
+      // Loop over pets within this adopted animal document
+      for (const [petId, petData] of Object.entries(adoptedAnimalData)) {
+        // Transfer each pet back to the RescuedAnimals collection
+        const rescuedAnimalRef = db.collection("RescuedAnimals").doc(petId);
+        await rescuedAnimalRef.set(petData, { merge: true });
+      }
+
+      // Delete the adopted animal record from AdoptedAnimals
+      await adoptedAnimalRef.delete();
+
+      res.json({
+        message:
+          "Pet(s) successfully transferred back to RescuedAnimals and removed from AdoptedAnimals.",
+      });
+    } catch (error) {
+      console.error("Error transferring pet back to RescuedAnimals:", error);
+      res.status(500).json({
+        message: "Error transferring pet back to RescuedAnimals",
         error: error.message,
       });
     }

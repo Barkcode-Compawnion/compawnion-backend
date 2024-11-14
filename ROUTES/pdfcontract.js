@@ -30,19 +30,17 @@ module.exports = function (db) {
       }
 
       const appData = appDoc.data();
-      const { applicant, petData } = appData;
+      const { applicant, petId } = appData; // Change petData.id to petId here
 
-      if (!petData || !petData.id) {
+      if (!petId) {
         return res
           .status(404)
-          .json({ message: "Pet data or Pet ID not found in application" });
+          .json({ message: "Pet ID not found in application" });
       }
-
-      const petId = petData.id;
 
       const rescuedAnimalDoc = await db
         .collection("RescuedAnimals")
-        .doc(petId)
+        .doc(petId) // Use petId directly
         .get();
 
       if (!rescuedAnimalDoc.exists) {
@@ -180,22 +178,74 @@ module.exports = function (db) {
     }
   });
 
-  pdfcontract.post("/appform/:id", (req, res) => {
+  pdfcontract.post("/appform/:id", async (req, res) => {
+    const { id } = req.params;
+
+    // Fetch the application details
+    let appDoc = await db
+      .collection("Applications")
+      .doc("PENDING")
+      .collection("Applications")
+      .doc(id)
+      .get();
+
+    if (!appDoc.exists) {
+      // If not found in PENDING, check APPROVED collection
+      const appDocApproved = await db
+        .collection("Applications")
+        .doc("APPROVED")
+        .collection("Applications")
+        .doc(id)
+        .get();
+
+      if (!appDocApproved.exists) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+      appDoc = appDocApproved;
+    }
+
+    const appData = appDoc.data();
     const {
+      applicant,
+      petId,
+      applicationType,
       termsAndCondission,
       paymentAgreement,
-      applicationType,
-      appPetID,
-      petId,
-      applicant,
       dwelling,
       petCare,
-    } = req.body;
+    } = appData;
 
-    // Create a new PDF document
+    if (!petId) {
+      return res
+        .status(404)
+        .json({ message: "Pet ID not found in application" });
+    }
+
+    // Fetch pet details from RescuedAnimals
+    let rescuedAnimalDoc = await db
+      .collection("RescuedAnimals")
+      .doc(petId)
+      .get();
+
+    if (!appDoc.exists) {
+      // If not found in RescuedAnimals, check AdoptedAnimals collection
+      const appDocApproved = await db
+        .collection("AdoptedAnimals")
+        .doc(appPetID)
+        .get();
+
+      if (!rescuedAnimalDoc.exists) {
+        return res
+          .status(404)
+          .json({ message: "Pet not found in RescuedAnimals" });
+      }
+      appDoc = appDocApproved;
+    }
+
+    // Create a PDF document
     const doc = new PDFDocument();
 
-    // Configure response to download as a PDF
+    // Stream the PDF as a response
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
@@ -203,12 +253,13 @@ module.exports = function (db) {
     );
     doc.pipe(res);
 
-    // Title and Pet Information
+    // Add content to PDF
     doc
-      .fontSize(20)
+      .fontSize(16)
       .text("Compawnion AMS Application Form", { align: "center" })
       .moveDown();
-    //26
+
+    // Pet Information
     doc
       .fontSize(15)
       .text("Pet Information:", { underline: true })
@@ -217,7 +268,6 @@ module.exports = function (db) {
       .fontSize(12)
       .text(`Pet ID: ${petId}`)
       .text(`Application Type: ${applicationType}`)
-      .text(`App Pet ID: ${appPetID} || ""`)
       .moveDown();
 
     // Applicant Information
@@ -232,16 +282,13 @@ module.exports = function (db) {
           applicant.name.lastName
         }`
       )
-
       .text(`Birthdate: ${applicant.birthdate}`)
-
       .text(
-        `address: ${applicant.address.street} ${applicant.address.lot} ${applicant.address.baranggay} ${applicant.address.cityOrMunicipality} ${applicant.address.province}, ${applicant.address.country} 
-        }`
+        `Address: ${applicant.address.street} ${applicant.address.lot} ${applicant.address.baranggay} ${applicant.address.cityOrMunicipality} ${applicant.address.province}, ${applicant.address.country}`
       )
       .text(`Occupation: ${applicant.occupation}`)
       .text(`Email: ${applicant.contact.email}`)
-      .text(`Facebook: ${applicant.contact.facebook} || ""`)
+      .text(`Facebook: ${applicant.contact.facebook || ""}`)
       .text(`Phone Number: ${applicant.contact.phoneNumber}`)
       .moveDown();
 
@@ -254,16 +301,10 @@ module.exports = function (db) {
       .fontSize(12)
       .text(`Type of Dwelling: ${dwelling.type}`)
       .text(`Ownership: ${dwelling.ownership}`)
-      .text(`Number of House member: ${dwelling.numberOfHouseMembers}`)
-      .text(
-        `Number of Pets in the Household (If any): ${dwelling.numberOfPets}`
-      )
-      .text(
-        `Have you confirmed that you are allowed to have pets in the house?: ${dwelling.petsAllowedInHouse}`
-      )
-      .text(
-        `Are you planning to move out in the next 6 months?: ${dwelling.planningToMoveOut}`
-      )
+      .text(`Number of House Members: ${dwelling.numberOfHouseMembers}`)
+      .text(`Number of Pets in the Household: ${dwelling.numberOfPets}`)
+      .text(`Pets Allowed in House: ${dwelling.petsAllowedInHouse}`)
+      .text(`Planning to Move Out in 6 months: ${dwelling.planningToMoveOut}`)
       .moveDown();
 
     // Pet Care Information
@@ -273,10 +314,8 @@ module.exports = function (db) {
       .moveDown(0.5);
     doc
       .fontSize(12)
-      .text(
-        `Do you have an experience being a pet-owner? ${petCare.petOwnershipExperience}`
-      )
-      .text(`Any Animal Clinic you know? ${petCare.veterinarian}`)
+      .text(`Experience as a Pet Owner: ${petCare.petOwnershipExperience}`)
+      .text(`Animal Clinic Known: ${petCare.veterinarian}`)
       .moveDown();
 
     // Terms and Conditions
@@ -301,6 +340,189 @@ module.exports = function (db) {
 
     // Finalize PDF and send it as a response
     doc.end();
+  });
+
+  pdfcontract.post("/both/:id", async (req, res) => {
+    const { id } = req.params;
+
+    try {
+      // Step 1: Fetch application data from PENDING or APPROVED collections
+      let appDoc = await db
+        .collection("Applications")
+        .doc("PENDING")
+        .collection("Applications")
+        .doc(id)
+        .get();
+
+      if (!appDoc.exists) {
+        appDoc = await db
+          .collection("Applications")
+          .doc("APPROVED")
+          .collection("Applications")
+          .doc(id)
+          .get();
+
+        if (!appDoc.exists) {
+          return res.status(404).json({ message: "Application not found" });
+        }
+      }
+
+      const appData = appDoc.data();
+      const petId = appData.petId;
+
+      if (!petId) {
+        return res
+          .status(404)
+          .json({ message: "Pet ID not found in application" });
+      }
+
+      // Step 2: Fetch pet details from RescuedAnimals or AdoptedAnimals collections
+      let petDoc = await db.collection("RescuedAnimals").doc(petId).get();
+
+      if (!petDoc.exists) {
+        const appPetID = appData.appPetID;
+        const adoptedAnimalDoc = await db
+          .collection("AdoptedAnimals")
+          .doc(appPetID.toString())
+          .get();
+
+        if (!adoptedAnimalDoc.exists) {
+          return res.status(404).json({
+            message: "Pet not found in RescuedAnimals or AdoptedAnimals",
+          });
+        }
+
+        const adoptedAnimalData = adoptedAnimalDoc.data();
+        petDoc = { id: petId, ...adoptedAnimalData[petId] }; // Get the pet data inside the appPetID document
+      }
+
+      const petData = petDoc.exists ? petDoc.data() : petDoc; // Get pet data from Rescued or Adopted document
+
+      // Step 3: Create a PDF document
+      const doc = new PDFDocument();
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        'attachment; filename="application_form.pdf"'
+      );
+      doc.pipe(res);
+      // Title
+      doc
+        .fontSize(16)
+        .text("Compawnion AMS Application Form", { align: "center" })
+        .moveDown();
+
+      // APPLICATION TYPE
+      doc.fontSize(15).text("APPLICATION:", { underline: true }).moveDown(0.5);
+      doc
+        .fontSize(12)
+        .text(`Application Type: ${appData.applicationType}`)
+        .moveDown();
+
+      // Pet Information
+      doc
+        .fontSize(15)
+        .text("Pet Information:", { underline: true })
+        .moveDown(0.5);
+      doc
+        .fontSize(12)
+        .image(`${petData.petId}`)
+        //.text(`Pet ID: ${petData.personal.picture}`)
+        .text(`Name: ${petData.personal.name}`)
+        .text(`Type: ${petData.personal.type}`)
+        .text(`Breed: ${petData.personal.breed}`)
+        .text(`Gender: ${petData.personal.gender}`)
+        .text(`Age: ${petData.personal.age.year}yr ${petData.personal.age.month}months`)
+        .text(`Weight: ${petData.background.weight}Kg`)
+        .text(`Size: ${petData.background.size}`)
+        .text(`Rescued Date: ${petData.background.rescueDate}`)
+        .moveDown();
+
+      // Applicant Information
+      doc
+        .fontSize(15)
+        .text("Applicant Information:", { underline: true })
+        .moveDown(0.5);
+      doc
+        .fontSize(12)
+        .text(
+          `Name: ${appData.applicant.name.firstName} ${
+            appData.applicant.name.middleName || ""
+          } ${appData.applicant.name.lastName}`
+        )
+        .text(`Birthdate: ${appData.applicant.birthdate}`)
+        .text(
+          `Address: ${appData.applicant.address.street} ${appData.applicant.address.lot} ${appData.applicant.address.baranggay}, ${appData.applicant.address.cityOrMunicipality}, ${appData.applicant.address.province}, ${appData.applicant.address.country}`
+        )
+        .text(`Occupation: ${appData.applicant.occupation}`)
+        .text(`Email: ${appData.applicant.contact.email}`)
+        .text(`Facebook: ${appData.applicant.contact.facebook || ""}`)
+        .text(`Phone Number: ${appData.applicant.contact.phoneNumber}`)
+        .moveDown();
+
+      // Dwelling Information
+      doc
+        .fontSize(15)
+        .text("Dwelling Information:", { underline: true })
+        .moveDown(0.5);
+      doc
+        .fontSize(12)
+        .text(`Type of Dwelling: ${appData.dwelling.type}`)
+        .text(`Ownership: ${appData.dwelling.ownership}`)
+        .text(
+          `Number of House Members: ${appData.dwelling.numberOfHouseMembers}`
+        )
+        .text(
+          `Number of Pets in the Household: ${appData.dwelling.numberOfPets}`
+        )
+        .text(`Pets Allowed in House: ${appData.dwelling.petsAllowedInHouse}`)
+        .text(
+          `Planning to Move Out in 6 months: ${appData.dwelling.planningToMoveOut}`
+        )
+        .moveDown();
+
+      // Pet Care Information
+      doc
+        .fontSize(15)
+        .text("Pet Care Information:", { underline: true })
+        .moveDown(0.5);
+      doc
+        .fontSize(12)
+        .text(
+          `Experience as a Pet Owner: ${appData.petCare.petOwnershipExperience}`
+        )
+        .text(`Animal Clinic Known: ${appData.petCare.veterinarian}`)
+        .moveDown();
+
+      // Terms and Conditions
+      doc
+        .fontSize(15)
+        .text("Terms and Conditions:", { underline: true })
+        .moveDown(0.5);
+      doc
+        .fontSize(12)
+        .text(`Agreed to Terms and Conditions: ${appData.termsAndCondission}`)
+        .moveDown();
+
+      // Payment Agreement
+      doc
+        .fontSize(15)
+        .text("Payment Agreement:", { underline: true })
+        .moveDown(0.5);
+      doc
+        .fontSize(12)
+        .text(`Agreed to Payment Terms: ${appData.paymentAgreement}`)
+        .moveDown();
+
+      // Finalize PDF and send it as a response
+      doc.end();
+    } catch (error) {
+      console.error("Error fetching data for /both/:id route:", error.message);
+      res.status(500).json({
+        message: "Failed to generate application form",
+        error: error.message,
+      });
+    }
   });
 
   return pdfcontract;
