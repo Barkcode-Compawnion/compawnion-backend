@@ -9,6 +9,11 @@ const path = require("path");
  * @returns {express.Router}
  */
 module.exports = function (db) {
+  // Function to convert boolean to Yes/No
+  function booleanToYesNo(value) {
+    return value === true ? "Yes" : "No";
+  }
+
   pdfcontract.post("/generate-contract/:id", async (req, res) => {
     const { id } = req.params;
     const { signature } = req.body; // Capture the base64 signature image
@@ -325,7 +330,11 @@ module.exports = function (db) {
       .moveDown(0.5);
     doc
       .fontSize(12)
-      .text(`Agreed to Terms and Conditions: ${termsAndCondission}`)
+      .text(
+        `Agreed to Terms and Conditions: ${booleanToYesNo(
+          appData.termsAndCondission
+        )}`
+      )
       .moveDown();
 
     // Payment Agreement
@@ -335,7 +344,9 @@ module.exports = function (db) {
       .moveDown(0.5);
     doc
       .fontSize(12)
-      .text(`Agreed to Payment Terms: ${paymentAgreement}`)
+      .text(
+        `Agreed to Payment Terms: ${booleanToYesNo(appData.paymentAgreement)}`
+      )
       .moveDown();
 
     // Finalize PDF and send it as a response
@@ -409,11 +420,17 @@ module.exports = function (db) {
       // Title
       doc
         .fontSize(16)
-        .text("Compawnion AMS Application Form", { align: "center" })
+        .text("Compawnion AMS Application Form".toUpperCase(), {
+          align: "center",
+        })
         .moveDown();
 
       // APPLICATION TYPE
-      doc.fontSize(15).text("APPLICATION:", { underline: true }).moveDown(0.5);
+      doc
+        .fontSize(15)
+        .text("APPLICATION:".toUpperCase())
+        .text("________________________________________________________")
+        .moveDown();
       doc
         .fontSize(12)
         .text(`Application Type: ${appData.applicationType}`)
@@ -422,7 +439,8 @@ module.exports = function (db) {
       // Pet Information
       doc
         .fontSize(15)
-        .text("Pet Information:", { underline: true })
+        .text("Pet Information:".toUpperCase())
+        .text("________________________________________________________")
         .moveDown(0.5);
       doc
         .fontSize(12)
@@ -441,7 +459,8 @@ module.exports = function (db) {
       // Applicant Information
       doc
         .fontSize(15)
-        .text("Applicant Information:", { underline: true })
+        .text("Applicant Information:".toUpperCase())
+        .text("________________________________________________________")
         .moveDown(0.5);
       doc
         .fontSize(12)
@@ -463,7 +482,8 @@ module.exports = function (db) {
       // Dwelling Information
       doc
         .fontSize(15)
-        .text("Dwelling Information:", { underline: true })
+        .text("Dwelling Information:".toUpperCase())
+        .text("________________________________________________________")
         .moveDown(0.5);
       doc
         .fontSize(12)
@@ -479,12 +499,13 @@ module.exports = function (db) {
         .text(
           `Planning to Move Out in 6 months: ${appData.dwelling.planningToMoveOut}`
         )
-        .moveDown();
+        .moveDown(5);
 
       // Pet Care Information
       doc
         .fontSize(15)
-        .text("Pet Care Information:", { underline: true })
+        .text("Pet Care Information:".toUpperCase())
+        .text("________________________________________________________")
         .moveDown(0.5);
       doc
         .fontSize(12)
@@ -497,21 +518,131 @@ module.exports = function (db) {
       // Terms and Conditions
       doc
         .fontSize(15)
-        .text("Terms and Conditions:", { underline: true })
+        .text("Terms and Conditions:".toUpperCase())
+        .text("________________________________________________________")
         .moveDown(0.5);
       doc
         .fontSize(12)
-        .text(`Agreed to Terms and Conditions: ${appData.termsAndCondission}`)
+        .text(
+          `Agreed to Terms and Conditions: ${booleanToYesNo(
+            appData.termsAndCondission
+          )}`
+        )
         .moveDown();
 
       // Payment Agreement
       doc
         .fontSize(15)
-        .text("Payment Agreement:", { underline: true })
+        .text("Payment Agreement:".toUpperCase())
+        .text("________________________________________________________")
         .moveDown(0.5);
       doc
         .fontSize(12)
-        .text(`Agreed to Payment Terms: ${appData.paymentAgreement}`)
+        .text(
+          `Agreed to Payment Terms: ${booleanToYesNo(appData.paymentAgreement)}`
+        )
+        .moveDown();
+      // Finalize PDF and send it as a response
+      doc.end();
+    } catch (error) {
+      console.error("Error fetching data for /both/:id route:", error.message);
+      res
+        .status(500)
+        .json({ message: "Failed to generate the PDF", error: error.message });
+    }
+  });
+
+  pdfcontract.post("/petinfo/:id", async (req, res) => {
+    const { id } = req.params;
+
+    try {
+      // Step 1: Fetch application data from PENDING or APPROVED collections
+      let appDoc = await db
+        .collection("Applications")
+        .doc("PENDING")
+        .collection("Applications")
+        .doc(id)
+        .get();
+
+      if (!appDoc.exists) {
+        appDoc = await db
+          .collection("Applications")
+          .doc("APPROVED")
+          .collection("Applications")
+          .doc(id)
+          .get();
+
+        if (!appDoc.exists) {
+          return res.status(404).json({ message: "Application not found" });
+        }
+      }
+
+      const appData = appDoc.data();
+      const petId = appData.petId;
+
+      if (!petId) {
+        return res
+          .status(404)
+          .json({ message: "Pet ID not found in application" });
+      }
+
+      // Step 2: Fetch pet details from RescuedAnimals or AdoptedAnimals collections
+      let petDoc = await db.collection("RescuedAnimals").doc(petId).get();
+
+      if (!petDoc.exists) {
+        const appPetID = appData.appPetID;
+        const adoptedAnimalDoc = await db
+          .collection("AdoptedAnimals")
+          .doc(appPetID.toString()) // Use appPetID for AdoptedAnimals lookup
+          .get();
+
+        if (!adoptedAnimalDoc.exists) {
+          return res.status(404).json({
+            message: "Pet not found in RescuedAnimals or AdoptedAnimals",
+          });
+        }
+
+        const adoptedAnimalData = adoptedAnimalDoc.data();
+        petDoc = adoptedAnimalData; // Set petDoc to adopted data directly
+      }
+
+      const petData = petDoc.exists ? petDoc.data() : petDoc; // Correctly extract data from petDoc
+
+      // Step 3: Create a PDF document
+      const doc = new PDFDocument();
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        'attachment; filename="application_form.pdf"'
+      );
+      doc.pipe(res);
+      // Title
+      doc
+        .fontSize(16)
+        .text("Compawnion AMS Pet Info Form".toUpperCase(), {
+          align: "center",
+        })
+        .moveDown();
+
+      // Pet Information
+      doc
+        .fontSize(15)
+        .text("Pet Information:".toUpperCase())
+        .text("________________________________________________________")
+        .moveDown(0.5);
+      doc
+        .fontSize(12)
+        .text(`Pet ID: ${petData.petId}`)
+        .text(`Name: ${petData.personal.name}`)
+        .text(`Type: ${petData.personal.type}`)
+        .text(`Breed: ${petData.personal.breed}`)
+        .text(`Gender: ${petData.personal.gender}`)
+        .text(
+          `Age: ${petData.personal.age.year}yr ${petData.personal.age.month}months`
+        )
+        .text(`Weight: ${petData.background.weight}Kg`)
+        .text(`Size: ${petData.background.size}`)
+        .text(`Rescued Date: ${petData.background.rescueDate}`)
         .moveDown();
 
       // Finalize PDF and send it as a response

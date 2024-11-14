@@ -90,7 +90,7 @@
       // Make sure the user provided an Application ID
       if (appId) {
         // Send a request to your server to generate the contract PDF
-        fetch(`http://localhost:3000/pdfcontract/generate-contract/${appId}`, {
+        fetch(`http://localhost:3000/pdfcontract/both/${appId}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
