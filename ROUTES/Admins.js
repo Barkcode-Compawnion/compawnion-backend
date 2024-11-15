@@ -48,7 +48,13 @@ module.exports = function (db, storage) {
     }
   }
 
-  async function sendAdminRegistrationEmail(email, adminId, username, name, password) {
+  async function sendAdminRegistrationEmail(
+    email,
+    adminId,
+    username,
+    name,
+    password
+  ) {
     // Optional: generate a temporary password if you don't want to send the real password
     const tempPassword = password; // In this case, we are sending the original password.
     const mailOptions = {
@@ -70,6 +76,24 @@ module.exports = function (db, storage) {
         <p>If you did not create this account, please contact support immediately.</p>
         <p>We look forward to working with you!</p>
       `,
+    };
+
+    await transporter.sendMail(mailOptions);
+  }
+
+  // Function to send the login notification email
+  async function sendLoginNotificationEmail(email, name, loginTime) {
+    const mailOptions = {
+      from: "barkcodecompawnion@gmail.com",
+      to: email,
+      subject: "Login Notification",
+      html: `
+      <h1>Login Successful</h1>
+      <p>Dear ${name},</p>
+      <p>You have successfully logged in to your admin account.</p>
+      <p><strong>Login Time:</strong> ${loginTime}</p>
+      <p>If this was not you, please contact support immediately.</p>
+    `,
     };
 
     await transporter.sendMail(mailOptions);
@@ -137,7 +161,13 @@ module.exports = function (db, storage) {
       const formattedAdminId = AdminId.toString().padStart(3, "0");
 
       // Send the registration email with the plain password first
-      await sendAdminRegistrationEmail(Email, formattedAdminId, Username, Name, Password);
+      await sendAdminRegistrationEmail(
+        Email,
+        formattedAdminId,
+        Username,
+        Name,
+        Password
+      );
 
       // Now hash the password before storing it
       const hashedPassword = await bcrypt.hash(Password, 10);
@@ -227,6 +257,13 @@ module.exports = function (db, storage) {
         LastLogin: loginTimestamp,
         token,
       });
+
+      // Send login notification email
+      await sendLoginNotificationEmail(
+        userData.aStaffInfo.Email,
+        userData.aStaffInfo.Name,
+        loginTimestamp
+      );
 
       // Return the token for the logged-in user
       res.json({ token });
