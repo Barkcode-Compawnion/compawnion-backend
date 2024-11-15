@@ -394,7 +394,7 @@ module.exports = function (db) {
         const appPetID = appData.appPetID;
         const adoptedAnimalDoc = await db
           .collection("AdoptedAnimals")
-          .doc(appPetID.toString()) // Use appPetID for AdoptedAnimals lookup
+          .doc(appPetID.toString())
           .get();
 
         if (!adoptedAnimalDoc.exists) {
@@ -403,11 +403,21 @@ module.exports = function (db) {
           });
         }
 
-        const adoptedAnimalData = adoptedAnimalDoc.data();
-        petDoc = adoptedAnimalData; // Set petDoc to adopted data directly
+        petDoc = adoptedAnimalDoc.data();
       }
 
-      const petData = petDoc.exists ? petDoc.data() : petDoc; // Correctly extract data from petDoc
+      // Unwrap pet data (adjusting for nested structure)
+      const petData = petDoc.exists ? petDoc.data() : petDoc;
+      const petDataUnwrapped = petData[petId] || petData; // Adjust if pet data is nested
+
+      // Check if petData contains the expected structure
+      if (
+        !petDataUnwrapped ||
+        !petDataUnwrapped.personal ||
+        !petDataUnwrapped.background
+      ) {
+        return res.status(404).json({ message: "Incomplete pet data" });
+      }
 
       // Step 3: Create a PDF document
       const doc = new PDFDocument();
@@ -417,6 +427,7 @@ module.exports = function (db) {
         'attachment; filename="application_form.pdf"'
       );
       doc.pipe(res);
+
       // Title
       doc
         .fontSize(16)
@@ -444,16 +455,16 @@ module.exports = function (db) {
         .moveDown(0.5);
       doc
         .fontSize(12)
-        .text(`Name: ${petData.personal.name}`)
-        .text(`Type: ${petData.personal.type}`)
-        .text(`Breed: ${petData.personal.breed}`)
-        .text(`Gender: ${petData.personal.gender}`)
+        .text(`Name: ${petDataUnwrapped.personal.name}`)
+        .text(`Type: ${petDataUnwrapped.personal.type}`)
+        .text(`Breed: ${petDataUnwrapped.personal.breed}`)
+        .text(`Gender: ${petDataUnwrapped.personal.gender}`)
         .text(
-          `Age: ${petData.personal.age.year}yr ${petData.personal.age.month}months`
+          `Age: ${petDataUnwrapped.personal.age.year}yr ${petDataUnwrapped.personal.age.month}months`
         )
-        .text(`Weight: ${petData.background.weight}Kg`)
-        .text(`Size: ${petData.background.size}`)
-        .text(`Rescued Date: ${petData.background.rescueDate}`)
+        .text(`Weight: ${petDataUnwrapped.background.weight}Kg`)
+        .text(`Size: ${petDataUnwrapped.background.size}`)
+        .text(`Rescued Date: ${petDataUnwrapped.background.rescueDate}`)
         .moveDown();
 
       // Applicant Information
@@ -542,10 +553,11 @@ module.exports = function (db) {
           `Agreed to Payment Terms: ${booleanToYesNo(appData.paymentAgreement)}`
         )
         .moveDown();
+
       // Finalize PDF and send it as a response
       doc.end();
     } catch (error) {
-      console.error("Error fetching data for /both/:id route:", error.message);
+      console.error("Error generating PDF:", error.message);
       res
         .status(500)
         .json({ message: "Failed to generate the PDF", error: error.message });
@@ -602,20 +614,30 @@ module.exports = function (db) {
           });
         }
 
-        const adoptedAnimalData = adoptedAnimalDoc.data();
-        petDoc = adoptedAnimalData; // Set petDoc to adopted data directly
+        petDoc = adoptedAnimalDoc.data();
       }
 
-      const petData = petDoc.exists ? petDoc.data() : petDoc; // Correctly extract data from petDoc
+      const petData = petDoc.exists ? petDoc.data() : petDoc; // Extract data from petDoc if it exists
+      const petDataUnwrapped = petData[petId] || petData; // Adjust if pet data is nested
+
+      // Check if petData contains the expected structure
+      if (
+        !petDataUnwrapped ||
+        !petDataUnwrapped.personal ||
+        !petDataUnwrapped.background
+      ) {
+        return res.status(404).json({ message: "Incomplete pet data" });
+      }
 
       // Step 3: Create a PDF document
       const doc = new PDFDocument();
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
-        'attachment; filename="application_form.pdf"'
+        'attachment; filename="pet_info_form.pdf"'
       );
       doc.pipe(res);
+
       // Title
       doc
         .fontSize(16)
@@ -632,23 +654,26 @@ module.exports = function (db) {
         .moveDown(0.5);
       doc
         .fontSize(12)
-        .text(`Pet ID: ${petData.petId}`)
-        .text(`Name: ${petData.personal.name}`)
-        .text(`Type: ${petData.personal.type}`)
-        .text(`Breed: ${petData.personal.breed}`)
-        .text(`Gender: ${petData.personal.gender}`)
+        .text(`Pet ID: ${petDataUnwrapped.petId}`)
+        .text(`Name: ${petDataUnwrapped.personal.name}`)
+        .text(`Type: ${petDataUnwrapped.personal.type}`)
+        .text(`Breed: ${petDataUnwrapped.personal.breed}`)
+        .text(`Gender: ${petDataUnwrapped.personal.gender}`)
         .text(
-          `Age: ${petData.personal.age.year}yr ${petData.personal.age.month}months`
+          `Age: ${petDataUnwrapped.personal.age.year}yr ${petDataUnwrapped.personal.age.month}months`
         )
-        .text(`Weight: ${petData.background.weight}Kg`)
-        .text(`Size: ${petData.background.size}`)
-        .text(`Rescued Date: ${petData.background.rescueDate}`)
+        .text(`Weight: ${petDataUnwrapped.background.weight}Kg`)
+        .text(`Size: ${petDataUnwrapped.background.size}`)
+        .text(`Rescued Date: ${petDataUnwrapped.background.rescueDate}`)
         .moveDown();
 
       // Finalize PDF and send it as a response
       doc.end();
     } catch (error) {
-      console.error("Error fetching data for /both/:id route:", error.message);
+      console.error(
+        "Error fetching data for /petinfo/:id route:",
+        error.message
+      );
       res
         .status(500)
         .json({ message: "Failed to generate the PDF", error: error.message });
