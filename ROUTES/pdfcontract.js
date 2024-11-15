@@ -31,7 +31,7 @@ module.exports = function (db) {
         .get();
 
       if (!appDoc.exists) {
-        return res.status(404).json({ message: "Application not found" });
+        return res.status(404).json({ message: "Application is already been APPROVED" });
       }
 
       const appData = appDoc.data();
