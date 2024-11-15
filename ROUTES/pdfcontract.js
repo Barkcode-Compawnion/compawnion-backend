@@ -13,7 +13,7 @@ module.exports = function (db) {
   function booleanToYesNo(value) {
     return value === true ? "Yes" : "No";
   }
-//
+  //
   pdfcontract.post("/generate-contract/:id", async (req, res) => {
     const { id } = req.params;
     const { signature } = req.body; // Capture the base64 signature image
@@ -31,7 +31,9 @@ module.exports = function (db) {
         .get();
 
       if (!appDoc.exists) {
-        return res.status(404).json({ message: "Application is already been APPROVED" });
+        return res
+          .status(404)
+          .json({ message: "Application is already been APPROVED or Does NOT exist" });
       }
 
       const appData = appDoc.data();
