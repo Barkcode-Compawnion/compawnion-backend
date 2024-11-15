@@ -21,12 +21,6 @@ const transporter = nodemailer.createTransport({
  * @returns {express.Router}
  */
 module.exports = function (db, storage) {
-  // Function to generate a JWT token
-  function generateAuthToken(username) {
-    const payload = { username };
-    const options = { expiresIn: "1h" }; // Token expiration time, adjust as needed
-    return jwt.sign(payload, secretKey, options);
-  }
   async function getNextCompId() {
     const counterRef = db.collection("Counter").doc("CompIDCounter");
 
@@ -228,79 +222,76 @@ module.exports = function (db, storage) {
   // Login Companion
   // Login Companion with Remember Me option
   Compawnions.post("/login", async (req, res) => {
-    const { Username, Password } = req.body;
+    const { Username, Password, rememberMe } = req.body;
 
     try {
-      // Check if the username exists
+      // Retrieve the user based on the provided username
       const userSnapshot = await db
         .collection("Compawnions")
         .where("CompawnionUser.accountCreate.Username", "==", Username)
         .get();
 
+      // Check if the user exists
       if (userSnapshot.empty) {
-        return res.status(404).json({ message: "Username not found." });
+        return res.status(404).json({ message: "User not found." });
       }
 
-      const userDoc = userSnapshot.docs[0];
-      const userData = userDoc.data();
+      // Get the user data
+      const userData = userSnapshot.docs[0].data();
 
-      // Check if the password is correct
-      const passwordMatch = await bcrypt.compare(
+      // Compare the provided password with the hashed password stored in Firestore
+      const isMatch = await bcrypt.compare(
         Password,
         userData.CompawnionUser.accountCreate.Password
-      );
-      if (!passwordMatch) {
-        return res.status(400).json({ message: "Invalid password." });
+      ); // Ensure correct path
+
+      if (!isMatch) {
+        return res.status(401).json({ message: "Invalid credentials." });
       }
 
-      // Fetch appPetID
+      // Fetch the appPetID associated with the companion
       const appPetID = userData.CompawnionUser.appPetID;
 
-      // Retrieve the adopted pet details
-      const adoptedPetRef = db.collection("AdoptedAnimals").doc(appPetID);
-      const adoptedPetDoc = await adoptedPetRef.get();
-
-      if (!adoptedPetDoc.exists) {
-        return res.status(404).json({ message: "Pet not found." });
+      if (!appPetID) {
+        return res
+          .status(400)
+          .json({ message: "No associated pet found for this companion." });
       }
 
-      const adoptedPet = adoptedPetDoc.data();
+      // Check if the appPetID exists in the AdoptedAnimals collection
+      const adoptedAnimalRef = db.collection("AdoptedAnimals").doc(appPetID);
+      const adoptedAnimalDoc = await adoptedAnimalRef.get();
 
-      // Generate a token (JWT) for the user (you can add a JWT generation here)
-      const token = generateAuthToken(Username); // Placeholder for token generation
+      if (!adoptedAnimalDoc.exists) {
+        return res.status(404).json({
+          message: "No adopted animal found with the provided appPetID.",
+        });
+      }
 
-      // Respond with the token and pet information
-      res.status(200).json({
+      // Retrieve the adopted animal data (optional, can return in response if needed)
+      const adoptedAnimalData = adoptedAnimalDoc.data();
+
+      // Update the user's status and last login timestamp
+      const loginTimestamp = new Date().toISOString();
+      await userSnapshot.docs[0].ref.update({
+        Status: "Active",
+        LastLogin: loginTimestamp,
+      });
+
+      // Set the token expiration based on the "rememberMe" flag
+      const expiresIn = rememberMe ? "7d" : "1h"; // 7 days for rememberMe, 1 hour for normal login
+
+      // Generate token
+      const token = jwt.sign({ Username }, secretKey, { expiresIn });
+
+      res.json({
         token,
-        adoptedPet: {
-          personal: adoptedPet.personal, // assuming the pet has a personal field
-          appPetID,
-          status: adoptedPet.status, // Add other pet details if necessary
-        },
+        adoptedPet: adoptedAnimalData, // Include adopted pet data in the response (optional)
       });
     } catch (error) {
-      console.error("Login error:", error);
-      res.status(500).json({ message: "Login failed.", error: error.message });
+      console.error("Error logging in:", error);
+      res.status(500).json({ message: "Failed to log in." });
     }
-  });
-
-  // Verify JWT Token
-  Compawnions.get("/verifyToken", (req, res) => {
-    const token = req.headers.authorization?.split(" ")[1];
-
-    if (!token) {
-      return res.status(401).json({ message: "No token provided." });
-    }
-
-    jwt.verify(token, secretKey, (err, decoded) => {
-      if (err) {
-        return res
-          .status(401)
-          .json({ message: "Token is invalid or expired." });
-      }
-
-      res.json({ message: "Token is valid.", decoded });
-    });
   });
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
