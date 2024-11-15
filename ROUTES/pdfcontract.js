@@ -13,7 +13,7 @@ module.exports = function (db) {
   function booleanToYesNo(value) {
     return value === true ? "Yes" : "No";
   }
-
+//
   pdfcontract.post("/generate-contract/:id", async (req, res) => {
     const { id } = req.params;
     const { signature } = req.body; // Capture the base64 signature image
