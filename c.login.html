@@ -3,124 +3,322 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Compawnion Login</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-      integrity="sha384-B4gt1jrGC7Jh4AgR9K7A0hE3jvnX2oCCf5L+o4kFcT7R8D3z4b3vTf3YHl8mBrxi"
-      crossorigin="anonymous"
-    />
+    <title>Login</title>
     <style>
       body {
         font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        flex-direction: column;
       }
+
       .login-container {
-        max-width: 400px;
-        margin: 50px auto;
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        width: 300px;
+        margin-bottom: 20px;
       }
-      .pet-card {
+
+      h2 {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      .form-group {
+        margin-bottom: 15px;
+      }
+
+      .form-group label {
+        font-size: 14px;
+        margin-bottom: 5px;
+        display: block;
+      }
+
+      .form-group input {
+        width: 100%;
+        padding: 10px;
+        font-size: 14px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+
+      .form-group input[type="checkbox"] {
+        width: auto;
+        margin-right: 5px;
+      }
+
+      .form-group .remember-me {
+        display: inline-block;
+      }
+
+      .form-group button {
+        width: 100%;
+        padding: 10px;
+        font-size: 16px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .form-group button:hover {
+        background-color: #45a049;
+      }
+
+      .error-message {
+        color: red;
+        text-align: center;
+        margin-top: 10px;
+      }
+
+      .success-message {
+        color: green;
+        text-align: center;
+        margin-top: 10px;
+      }
+
+      .table-container {
         margin-top: 20px;
+        width: 80%;
+        max-width: 800px;
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+
+      table,
+      th,
+      td {
+        border: 1px solid #ddd;
+      }
+
+      th,
+      td {
+        padding: 12px;
+        text-align: left;
+      }
+
+      th {
+        background-color: #f2f2f2;
+      }
+
+      .logout-btn {
+        padding: 10px 20px;
+        background-color: #f44336;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 20px;
+      }
+
+      .logout-btn:hover {
+        background-color: #d32f2f;
       }
     </style>
   </head>
   <body>
-    <div class="container">
-      <!-- Login Form -->
-      <div class="login-container">
-        <h3 class="text-center">Compawnion Login</h3>
-        <form id="loginForm">
-          <div class="mb-3">
-            <label for="username" class="form-label">Username</label>
-            <input type="text" class="form-control" id="username" required />
-          </div>
-          <div class="mb-3">
-            <label for="password" class="form-label">Password</label>
-            <input
-              type="password"
-              class="form-control"
-              id="password"
-              required
-            />
-          </div>
-          <button type="submit" class="btn btn-primary w-100">Login</button>
-        </form>
-      </div>
-
-      <!-- Pet Card (This will be shown after login) -->
-      <div id="petCardContainer" class="pet-card" style="display: none">
-        <h3>Your Adopted Pet</h3>
-        <div id="petCard" class="card" style="width: 18rem">
-          <img id="petImage" class="card-img-top" src="" alt="Pet image" />
-          <div class="card-body">
-            <h5 id="petName" class="card-title"></h5>
-            <p id="petBreed" class="card-text"></p>
-            <p id="petRfid" class="card-text"></p>
-            <!-- Display appPetID -->
-            <p id="petAppPetID" class="card-text"></p>
-          </div>
+    <div class="login-container" id="loginContainer">
+      <h2>Login</h2>
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="Username">Username:</label>
+          <input type="text" id="Username" name="Username" required />
         </div>
-      </div>
+        <div class="form-group">
+          <label for="Password">Password:</label>
+          <input type="password" id="Password" name="Password" required />
+        </div>
+        <div class="form-group">
+          <label class="remember-me">
+            <input type="checkbox" id="rememberMe" name="rememberMe" /> Remember
+            Me
+          </label>
+        </div>
+        <div class="form-group">
+          <button type="submit">Login</button>
+        </div>
+      </form>
+      <div class="error-message" id="errorMessage" style="display: none"></div>
+      <div
+        class="success-message"
+        id="successMessage"
+        style="display: none"
+      ></div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <div class="table-container" id="tableContainer" style="display: none">
+      <h2>Adopted Pets</h2>
+      <table id="petTable">
+        <thead>
+          <tr>
+            <th>Pet Name</th>
+            <th>Breed</th>
+            <th>RFID Tag</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <button class="logout-btn" id="logoutBtn">Logout</button>
+    </div>
+
     <script>
-      const loginForm = document.getElementById("loginForm");
-      const petCardContainer = document.getElementById("petCardContainer");
-      const petCard = document.getElementById("petCard");
-      const petImage = document.getElementById("petImage");
-      const petName = document.getElementById("petName");
-      const petBreed = document.getElementById("petBreed");
-      const petRfid = document.getElementById("petRfid");
-      const petAppPetID = document.getElementById("petAppPetID");
+      // Check for JWT token on page load and show appropriate view
+      window.onload = function () {
+        const token = localStorage.getItem("jwt"); // or check cookies
+        if (token) {
+          // Token exists, skip login and fetch pets
+          fetchAdoptedPets();
+          document.getElementById("loginContainer").style.display = "none";
+          document.getElementById("tableContainer").style.display = "block";
+        } else {
+          // No token, show login screen
+          document.getElementById("loginContainer").style.display = "block";
+          document.getElementById("tableContainer").style.display = "none";
+        }
+      };
 
-      loginForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
+      // Handle the form submission
+      document
+        .getElementById("loginForm")
+        .addEventListener("submit", async function (event) {
+          event.preventDefault();
 
-        const username = document.getElementById("username").value;
-        const password = document.getElementById("password").value;
+          const username = document.getElementById("Username").value;
+          const password = document.getElementById("Password").value;
+          const rememberMe = document.getElementById("rememberMe").checked;
 
-        try {
-          // Send login request to the backend
-          const response = await axios.post(
-            "http://localhost:3000/compawnions/login", // Update with the actual backend URL
-            {
-              Username: username,
-              Password: password,
+          const loginData = {
+            Username: username,
+            Password: password,
+            rememberMe: rememberMe,
+          };
+
+          try {
+            const response = await fetch(
+              "http://localhost:3000/compawnions/login",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(loginData),
+              }
+            );
+
+            const result = await response.json();
+
+            if (response.ok) {
+              document.getElementById("successMessage").style.display = "block";
+              document.getElementById("successMessage").textContent =
+                "Login successful!";
+
+              // Save JWT in localStorage
+              const token = result.token; // Assuming token is part of the response
+              localStorage.setItem("jwt", token); // Store the JWT in localStorage
+
+              // Fetch pets from AdoptedAnimals after successful login
+              fetchAdoptedPets();
+
+              // Display the table with adopted pet data
+              document.getElementById("loginContainer").style.display = "none";
+              document.getElementById("tableContainer").style.display = "block";
+            } else {
+              document.getElementById("errorMessage").style.display = "block";
+              document.getElementById("errorMessage").textContent =
+                result.message || "An error occurred.";
             }
-          );
+          } catch (error) {
+            console.error("Error during login:", error);
+            document.getElementById("errorMessage").style.display = "block";
+            document.getElementById("errorMessage").textContent =
+              "Failed to connect to server.";
+          }
+        });
 
-          // Check if the login was successful
-          if (response.data.token) {
-            alert("Login successful!");
-            // Hide the login form
-            loginForm.style.display = "none";
+      // Fetch adopted pets from AdoptedAnimals collection
+      async function fetchAdoptedPets() {
+        try {
+          const response = await fetch("http://localhost:3000/adoptedAnimals", {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("jwt")}`, // Pass the JWT token
+            },
+          });
 
-            // Fetch the adopted pet details from the response
-            const adoptedPet = response.data.adoptedPet;
-            displayAdoptedPet(adoptedPet);
+          const pets = await response.json();
+
+          if (response.ok && pets.length > 0) {
+            const petTable = document
+              .getElementById("petTable")
+              .getElementsByTagName("tbody")[0];
+
+            // Loop through the pets and display them in the table
+            pets.forEach((pet) => {
+              const petRow = petTable.insertRow();
+              petRow.insertCell(0).textContent = pet.name;
+              petRow.insertCell(1).textContent = pet.breed;
+              petRow.insertCell(2).textContent = pet.rfidTag;
+            });
           } else {
-            alert("Login failed. Please try again.");
+            alert("No adopted pets found.");
           }
         } catch (error) {
-          console.error("Login error:", error);
-          alert("An error occurred during login.");
+          console.error("Error fetching adopted pets:", error);
+          alert("Error fetching pets.");
         }
-      });
-
-      function displayAdoptedPet(pet) {
-        // Display the adopted pet information in a card
-        petCardContainer.style.display = "block";
-
-        // Display pet information
-        petName.textContent = `Name: ${pet.personal?.name}`;
-        petBreed.textContent = `Breed: ${pet.personal?.breed}`;
-        petRfid.textContent = `RFID: ${pet.status}`;
-        petAppPetID.textContent = `Pet ID: ${pet.appPetID}`;
-
-        // Optional: Set pet image if available
-        petImage.src =
-          pet.personal?.picture || "https://via.placeholder.com/150"; // Placeholder if no image available
       }
+
+      // Logout functionality (POST logout route)
+      document
+        .getElementById("logoutBtn")
+        .addEventListener("click", async function () {
+          try {
+            // Send POST request to logout endpoint
+            const logoutResponse = await fetch(
+              "http://localhost:3000/compawnions/logout",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+
+            if (logoutResponse.ok) {
+              // Clear the JWT from localStorage
+              localStorage.removeItem("jwt");
+
+              // Show login form and hide pet data table
+              document.getElementById("loginContainer").style.display = "block";
+              document.getElementById("tableContainer").style.display = "none";
+
+              // Clear the pet table
+              document
+                .getElementById("petTable")
+                .getElementsByTagName("tbody")[0].innerHTML = "";
+
+              // Hide success message
+              document.getElementById("successMessage").style.display = "none";
+            } else {
+              alert("Logout failed!");
+            }
+          } catch (error) {
+            console.error("Error during logout:", error);
+          }
+        });
     </script>
   </body>
 </html>
