@@ -593,6 +593,8 @@ module.exports = function (db) {
     }
   });
 
+
+  // transfer all pets back to Rescued Animal
   application.post("/:appPetID/transferback", async (req, res) => {
     const appPetID = req.params.appPetID; // Get appPetID from route parameter
 
@@ -620,6 +622,61 @@ module.exports = function (db) {
       res.json({
         message:
           "Pet(s) successfully transferred back to RescuedAnimals and removed from AdoptedAnimals.",
+      });
+    } catch (error) {
+      console.error("Error transferring pet back to RescuedAnimals:", error);
+      res.status(500).json({
+        message: "Error transferring pet back to RescuedAnimals",
+        error: error.message,
+      });
+    }
+  });
+
+
+  // transfer specific pet back to Rescued Animal
+  application.post("/:appPetID/transferback/:petId", async (req, res) => {
+    const { appPetID, petId } = req.params;
+
+    try {
+      // Reference to the specific adopted pet document
+      const adoptedAnimalRef = db.collection("AdoptedAnimals").doc(appPetID);
+      const adoptedAnimalDoc = await adoptedAnimalRef.get();
+
+      if (!adoptedAnimalDoc.exists) {
+        return res.status(404).json({ message: "Adopted pet not found" });
+      }
+
+      const adoptedAnimalData = adoptedAnimalDoc.data();
+
+      // Check if the specific petId exists in the adopted animal data
+      if (!adoptedAnimalData[petId]) {
+        return res
+          .status(404)
+          .json({
+            message: `Pet with ID ${petId} not found in AdoptedAnimals`,
+          });
+      }
+
+      const petData = adoptedAnimalData[petId];
+
+      // Transfer the pet back to the RescuedAnimals collection
+      const rescuedAnimalRef = db.collection("RescuedAnimals").doc(petId);
+      await rescuedAnimalRef.set(petData, { merge: true });
+
+      // Remove the pet from the AdoptedAnimals document
+      delete adoptedAnimalData[petId];
+
+      // Update the AdoptedAnimals document
+      if (Object.keys(adoptedAnimalData).length === 0) {
+        // If no pets remain, delete the entire document
+        await adoptedAnimalRef.delete();
+      } else {
+        // Otherwise, update the document with the remaining pets
+        await adoptedAnimalRef.set(adoptedAnimalData);
+      }
+
+      res.json({
+        message: `Pet with ID ${petId} successfully transferred back to RescuedAnimals.`,
       });
     } catch (error) {
       console.error("Error transferring pet back to RescuedAnimals:", error);
