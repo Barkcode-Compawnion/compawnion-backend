@@ -8,7 +8,7 @@ module.exports = function (db) {
     service: "gmail",
     auth: {
       user: "barkcodecompawnion@gmail.com", // Replace with actual email
-      pass: "fmji xuvs akpb mrke", // Replace with actual app password
+      pass: "fmji xuvs akpb mrke",
     },
   });
 

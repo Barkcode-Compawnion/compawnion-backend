@@ -256,71 +256,8 @@ module.exports = function (db, storage) {
     res.json({ message: "Logout successful." });
   });
 
-  // New route to add details to CompawnionUser
-  Compawnions.post("/addDetails", async (req, res) => {
-    const { Username, MedSched, TrustedVet, CompawnionSched } = req.body;
+ 
 
-    // before ka ma-confuse ka eto yung mga attributes sa loob ng mga to:
-    // ayan kasi yung mga ica-call mo sa mga textbox etc.
-
-    //MedSched: { SchedTitle, SchedDate, SchedTime, SchedVetClinic, SchedPet },
-    //TrustedVet: { TVVetClinic, TVAddress },
-    //CompawnionSched: { EventTitle, CSDate, CSTime, GmeetRoom },
-
-    if (!Username) {
-      return res.status(400).json({ message: "Username is required." });
-    }
-
-    try {
-      // Locate companion document by Username
-      const userSnapshot = await db
-        .collection("Compawnions")
-        .where("CompawnionUser.accountCreate.Username", "==", Username)
-        .get();
-
-      if (userSnapshot.empty) {
-        return res.status(404).json({ message: "Companion not found." });
-      }
-
-      const userRef = userSnapshot.docs[0].ref;
-      const userData = userSnapshot.docs[0].data().CompawnionUser;
-
-      // Initialize arrays if they do not exist
-      const medSchedArray = userData.MedSched || [];
-      const trustedVetArray = userData.TrustedVet || [];
-      const compawnionSchedArray = userData.CompawnionSched || [];
-
-      // Update MedSched if provided
-      if (MedSched) {
-        await userRef.update({
-          "CompawnionUser.MedSched": medSchedArray.concat(MedSched),
-        });
-      }
-
-      // Update TrustedVet if provided
-      if (TrustedVet) {
-        await userRef.update({
-          "CompawnionUser.TrustedVet": trustedVetArray.concat(TrustedVet),
-        });
-      }
-
-      // Update CompawnionSched if provided
-      if (CompawnionSched) {
-        await userRef.update({
-          "CompawnionUser.CompawnionSched":
-            compawnionSchedArray.concat(CompawnionSched),
-        });
-      }
-
-      res.json({ message: "Companion details added successfully." });
-    } catch (error) {
-      console.error("Error adding companion details:", error); // Log the error
-      res.status(500).json({
-        message: "Failed to add companion details.",
-        error: error.message,
-      }); // Include error message in response
-    }
-  });
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -360,6 +297,45 @@ module.exports = function (db, storage) {
       res.status(500).json({ message: "Error retrieving Companion." });
     }
   });
+
+
+  // Get response for companion details
+Compawnions.get("/schedules/:companionId", async (req, res) => {
+  const { companionId } = req.params; // Extract companionId from route parameters
+
+  if (!companionId) {
+    return res.status(400).json({ message: "Companion ID is required." });
+  }
+
+  try {
+    // Locate the companion document by ID
+    const userDoc = await db.collection("Compawnions").doc(companionId).get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ message: "Companion not found." });
+    }
+
+    // Extract the user's details
+    const userData = userDoc.data().CompawnionUser;
+
+    const companionDetails = {
+      MedSched: userData.MedSched || [],
+      TrustedVet: userData.TrustedVet || [],
+      CompawnionSched: userData.CompawnionSched || [],
+    };
+
+    res.json({
+      message: "Companion details retrieved successfully.",
+      data: companionDetails,
+    });
+  } catch (error) {
+    console.error("Error retrieving companion details:", error); // Log the error
+    res.status(500).json({
+      message: "Failed to retrieve companion details.",
+      error: error.message,
+    }); // Include error message in response
+  }
+});
 
   // Get the adopted animal owned by the Companion using their appPetID
   Compawnions.get("/myPets/:companionId", async (req, res) => {
