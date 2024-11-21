@@ -237,7 +237,8 @@ module.exports = function (db, storage) {
       res.json({
         message: "Login successful",
         token,
-        appPetID
+        appPetID,
+        companionId: userSnapshot.docs[0].id
       });
     } catch (error) {
       console.error("Error logging in:", error);
