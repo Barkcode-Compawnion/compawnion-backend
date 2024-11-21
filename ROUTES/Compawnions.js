@@ -237,6 +237,7 @@ module.exports = function (db, storage) {
       res.json({
         message: "Login successful",
         token,
+        appPetID,
         adoptedPet: adoptedAnimalData, // Include adopted pet data in the response (optional)
       });
     } catch (error) {
