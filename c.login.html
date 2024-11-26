@@ -7,318 +7,159 @@
     <style>
       body {
         font-family: Arial, sans-serif;
-        background-color: #f4f4f4;
+        margin: 0;
+        padding: 0;
         display: flex;
         justify-content: center;
         align-items: center;
         height: 100vh;
-        margin: 0;
-        flex-direction: column;
+        background-color: #e9e9e9;
       }
-
-      .login-container {
-        background-color: #fff;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        width: 300px;
-        margin-bottom: 20px;
-      }
-
-      h2 {
+      .container {
         text-align: center;
+        width: 80%;
+        max-width: 400px;
+      }
+      .title {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #c35e26;
         margin-bottom: 20px;
       }
-
-      .form-group {
-        margin-bottom: 15px;
-      }
-
-      .form-group label {
-        font-size: 14px;
-        margin-bottom: 5px;
-        display: block;
-      }
-
-      .form-group input {
+      .input-field {
         width: 100%;
         padding: 10px;
-        font-size: 14px;
+        margin: 10px 0;
         border: 1px solid #ddd;
-        border-radius: 4px;
+        border-radius: 30px;
+        font-size: 1rem;
       }
-
-      .form-group input[type="checkbox"] {
-        width: auto;
-        margin-right: 5px;
+      .button {
+        width: 100%;
+        padding: 15px;
+        margin: 15px 0;
+        background-color: #c35e26;
+        color: white;
+        border: none;
+        border-radius: 30px;
+        font-size: 1.1rem;
+        cursor: pointer;
       }
-
-      .form-group .remember-me {
+      .button:disabled {
+        background-color: #aaa;
+        cursor: not-allowed;
+      }
+      .link {
+        font-size: 0.9rem;
+        color: #45362f;
+        font-weight: bold;
+        text-decoration: underline;
+        cursor: pointer;
+      }
+      .signup-link {
+        font-size: 1rem;
+        color: #c35e26;
+        font-weight: bold;
+        text-decoration: underline;
+        margin-top: 10px;
         display: inline-block;
       }
-
-      .form-group button {
-        width: 100%;
-        padding: 10px;
-        font-size: 16px;
-        background-color: #4caf50;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-      }
-
-      .form-group button:hover {
-        background-color: #45a049;
-      }
-
-      .error-message {
-        color: red;
-        text-align: center;
-        margin-top: 10px;
-      }
-
-      .success-message {
-        color: green;
-        text-align: center;
-        margin-top: 10px;
-      }
-
-      .table-container {
-        margin-top: 20px;
-        width: 80%;
-        max-width: 800px;
-        overflow-x: auto;
-      }
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 20px;
-      }
-
-      table,
-      th,
-      td {
-        border: 1px solid #ddd;
-      }
-
-      th,
-      td {
-        padding: 12px;
-        text-align: left;
-      }
-
-      th {
-        background-color: #f2f2f2;
-      }
-
-      .logout-btn {
-        padding: 10px 20px;
-        background-color: #f44336;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        margin-top: 20px;
-      }
-
-      .logout-btn:hover {
-        background-color: #d32f2f;
+      .logo {
+        width: 150px;
+        margin: 20px 0;
       }
     </style>
   </head>
   <body>
-    <div class="login-container" id="loginContainer">
-      <h2>Login</h2>
-      <form id="loginForm">
-        <div class="form-group">
-          <label for="Username">Username:</label>
-          <input type="text" id="Username" name="Username" required />
-        </div>
-        <div class="form-group">
-          <label for="Password">Password:</label>
-          <input type="password" id="Password" name="Password" required />
-        </div>
-        <div class="form-group">
-          <label class="remember-me">
-            <input type="checkbox" id="rememberMe" name="rememberMe" /> Remember
-            Me
-          </label>
-        </div>
-        <div class="form-group">
-          <button type="submit">Login</button>
-        </div>
-      </form>
-      <div class="error-message" id="errorMessage" style="display: none"></div>
-      <div
-        class="success-message"
-        id="successMessage"
-        style="display: none"
-      ></div>
+    <div class="container">
+      <img src="logo.png" alt="Logo" class="logo" />
+      <h1 class="title">Log in</h1>
+      <input
+        type="text"
+        id="username"
+        class="input-field"
+        placeholder="Username"
+      />
+      <input
+        type="password"
+        id="password"
+        class="input-field"
+        placeholder="Password"
+      />
+      <button class="button" id="loginButton">Log in</button>
+      <p><span class="link" id="forgotPassword">Forgot Password</span></p>
+      <p>
+        Don't have an account?
+        <span class="signup-link" id="signUp">Sign up</span>
+      </p>
     </div>
-
-    <div class="table-container" id="tableContainer" style="display: none">
-      <h2>Adopted Pets</h2>
-      <table id="petTable">
-        <thead>
-          <tr>
-            <th>Pet Name</th>
-            <th>Breed</th>
-            <th>RFID Tag</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      <button class="logout-btn" id="logoutBtn">Logout</button>
-    </div>
-
     <script>
-      // Check for JWT token on page load and show appropriate view
-      window.onload = function () {
-        const token = localStorage.getItem("jwt"); // or check cookies
-        if (token) {
-          // Token exists, skip login and fetch pets
-          fetchAdoptedPets();
-          document.getElementById("loginContainer").style.display = "none";
-          document.getElementById("tableContainer").style.display = "block";
-        } else {
-          // No token, show login screen
-          document.getElementById("loginContainer").style.display = "block";
-          document.getElementById("tableContainer").style.display = "none";
-        }
-      };
-
-      // Handle the form submission
       document
-        .getElementById("loginForm")
-        .addEventListener("submit", async function (event) {
-          event.preventDefault();
+        .getElementById("loginButton")
+        .addEventListener("click", async () => {
+          const username = document.getElementById("username").value;
+          const password = document.getElementById("password").value;
 
-          const username = document.getElementById("Username").value;
-          const password = document.getElementById("Password").value;
-          const rememberMe = document.getElementById("rememberMe").checked;
+          if (!username || !password) {
+            alert("Please enter both username and password.");
+            return;
+          }
 
-          const loginData = {
-            Username: username,
-            Password: password,
-            rememberMe: rememberMe,
-          };
+          const loginButton = document.getElementById("loginButton");
+          loginButton.disabled = true;
+          loginButton.textContent = "Logging in...";
 
           try {
             const response = await fetch(
-              "http://localhost:3000/compawnions/login",
+              "https://compawnion-backend.onrender.com/Compawnions/login",
               {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
                 },
-                body: JSON.stringify(loginData),
+                body: JSON.stringify({
+                  Username: username,
+                  Password: password,
+                }),
               }
             );
 
-            const result = await response.json();
+            const data = await response.json();
 
             if (response.ok) {
-              document.getElementById("successMessage").style.display = "block";
-              document.getElementById("successMessage").textContent =
-                "Login successful!";
+              // Save data to localStorage
+              localStorage.setItem("authToken", data.token);
+              localStorage.setItem("appPetID", data.appPetID);
+              localStorage.setItem("username", username);
+              localStorage.setItem("companionId", data.companionId);
 
-              // Save JWT in localStorage
-              const token = result.token; // Assuming token is part of the response
-              localStorage.setItem("jwt", token); // Store the JWT in localStorage
-
-              // Fetch pets from AdoptedAnimals after successful login
-              fetchAdoptedPets();
-
-              // Display the table with adopted pet data
-              document.getElementById("loginContainer").style.display = "none";
-              document.getElementById("tableContainer").style.display = "block";
+              alert("Login successful!");
+              window.location.href = "./c.pet.html"; // Redirect to homepage
             } else {
-              document.getElementById("errorMessage").style.display = "block";
-              document.getElementById("errorMessage").textContent =
-                result.message || "An error occurred.";
+              alert(
+                `Login Failed: ${
+                  data.message || "Invalid username or password"
+                }`
+              );
             }
           } catch (error) {
-            console.error("Error during login:", error);
-            document.getElementById("errorMessage").style.display = "block";
-            document.getElementById("errorMessage").textContent =
-              "Failed to connect to server.";
+            console.error("Error logging in:", error);
+            alert("An error occurred while trying to log in.");
+          } finally {
+            loginButton.disabled = false;
+            loginButton.textContent = "Log in";
           }
         });
 
-      // Fetch adopted pets from AdoptedAnimals collection
-      async function fetchAdoptedPets() {
-        try {
-          const response = await fetch("http://localhost:3000/adoptedAnimals", {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${localStorage.getItem("jwt")}`, // Pass the JWT token
-            },
-          });
-
-          const pets = await response.json();
-
-          if (response.ok && pets.length > 0) {
-            const petTable = document
-              .getElementById("petTable")
-              .getElementsByTagName("tbody")[0];
-
-            // Loop through the pets and display them in the table
-            pets.forEach((pet) => {
-              const petRow = petTable.insertRow();
-              petRow.insertCell(0).textContent = pet.name;
-              petRow.insertCell(1).textContent = pet.breed;
-              petRow.insertCell(2).textContent = pet.rfidTag;
-            });
-          } else {
-            alert("No adopted pets found.");
-          }
-        } catch (error) {
-          console.error("Error fetching adopted pets:", error);
-          alert("Error fetching pets.");
-        }
-      }
-
-      // Logout functionality (POST logout route)
       document
-        .getElementById("logoutBtn")
-        .addEventListener("click", async function () {
-          try {
-            // Send POST request to logout endpoint
-            const logoutResponse = await fetch(
-              "http://localhost:3000/compawnions/logout",
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-
-            if (logoutResponse.ok) {
-              // Clear the JWT from localStorage
-              localStorage.removeItem("jwt");
-
-              // Show login form and hide pet data table
-              document.getElementById("loginContainer").style.display = "block";
-              document.getElementById("tableContainer").style.display = "none";
-
-              // Clear the pet table
-              document
-                .getElementById("petTable")
-                .getElementsByTagName("tbody")[0].innerHTML = "";
-
-              // Hide success message
-              document.getElementById("successMessage").style.display = "none";
-            } else {
-              alert("Logout failed!");
-            }
-          } catch (error) {
-            console.error("Error during logout:", error);
-          }
+        .getElementById("forgotPassword")
+        .addEventListener("click", () => {
+          window.location.href = "./forgot-password.html";
         });
+
+      document.getElementById("signUp").addEventListener("click", () => {
+        window.location.href = "./signup.html";
+      });
     </script>
   </body>
 </html>

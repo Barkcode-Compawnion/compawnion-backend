@@ -238,7 +238,7 @@ module.exports = function (db, storage) {
         message: "Login successful",
         token,
         appPetID,
-        companionId: userSnapshot.docs[0].id
+        companionId: userSnapshot.docs[0].id,
       });
     } catch (error) {
       console.error("Error logging in:", error);
@@ -256,9 +256,6 @@ module.exports = function (db, storage) {
 
     res.json({ message: "Logout successful." });
   });
-
- 
-
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -299,44 +296,171 @@ module.exports = function (db, storage) {
     }
   });
 
+  Compawnions.post("/addMedSched/:id", async (req, res) => {
+    const { id } = req.params;
+    const { MedSched } = req.body;
 
-  // Get response for companion details
-Compawnions.get("/schedules/:companionId", async (req, res) => {
-  const { companionId } = req.params; // Extract companionId from route parameters
-
-  if (!companionId) {
-    return res.status(400).json({ message: "Companion ID is required." });
-  }
-
-  try {
-    // Locate the companion document by ID
-    const userDoc = await db.collection("Compawnions").doc(companionId).get();
-
-    if (!userDoc.exists) {
-      return res.status(404).json({ message: "Companion not found." });
+    if (!MedSched) {
+      return res.status(400).json({
+        message: "All MedSched fields are required.",
+      });
     }
 
-    // Extract the user's details
-    const userData = userDoc.data().CompawnionUser;
+    const { SchedTitle, SchedDate, SchedTime, SchedVetClinic, SchedPet } =
+      MedSched;
+    if (
+      !SchedTitle ||
+      !SchedDate ||
+      !SchedTime ||
+      !SchedVetClinic ||
+      !SchedPet
+    ) {
+      return res.status(400).json({
+        message:
+          "MedSched must include SchedTitle, SchedDate, SchedTime, SchedVetClinic, and SchedPet.",
+      });
+    }
 
-    const companionDetails = {
-      MedSched: userData.MedSched || [],
-      TrustedVet: userData.TrustedVet || [],
-      CompawnionSched: userData.CompawnionSched || [],
-    };
+    try {
+      const userRef = db.collection("Compawnions").doc(id);
+      const userDoc = await userRef.get();
 
-    res.json({
-      message: "Companion details retrieved successfully.",
-      data: companionDetails,
-    });
-  } catch (error) {
-    console.error("Error retrieving companion details:", error); // Log the error
-    res.status(500).json({
-      message: "Failed to retrieve companion details.",
-      error: error.message,
-    }); // Include error message in response
-  }
-});
+      if (!userDoc.exists) {
+        return res.status(404).json({ message: "Companion not found." });
+      }
+
+      const medSchedArray = userDoc.data().CompawnionUser.MedSched || [];
+      await userRef.update({
+        "CompawnionUser.MedSched": medSchedArray.concat(MedSched),
+      });
+      res.json({ message: "MedSched added successfully." });
+    } catch (error) {
+      console.error("Error adding MedSched:", error);
+      res
+        .status(500)
+        .json({ message: "Failed to add MedSched.", error: error.message });
+    }
+  });
+
+  Compawnions.post("/addTrustedVet/:id", async (req, res) => {
+    const { id } = req.params;
+    const { TrustedVet } = req.body;
+
+    if (!TrustedVet) {
+      return res.status(400).json({
+        message: "All TrustedVet fields are required.",
+      });
+    }
+
+    const { TVVetClinic, TVAddress } = TrustedVet;
+    if (!TVVetClinic || !TVAddress) {
+      return res.status(400).json({
+        message: "TrustedVet must include TVVetClinic and TVAddress.",
+      });
+    }
+
+    try {
+      const userRef = db.collection("Compawnions").doc(id);
+      const userDoc = await userRef.get();
+
+      if (!userDoc.exists) {
+        return res.status(404).json({ message: "Companion not found." });
+      }
+
+      const trustedVetArray = userDoc.data().CompawnionUser.TrustedVet || [];
+      await userRef.update({
+        "CompawnionUser.TrustedVet": trustedVetArray.concat(TrustedVet),
+      });
+      res.json({ message: "TrustedVet added successfully." });
+    } catch (error) {
+      console.error("Error adding TrustedVet:", error);
+      res
+        .status(500)
+        .json({ message: "Failed to add TrustedVet.", error: error.message });
+    }
+  });
+
+  Compawnions.post("/addCompawnionSched/:id", async (req, res) => {
+    const { id } = req.params;
+    const { CompawnionSched } = req.body;
+
+    if (!CompawnionSched) {
+      return res.status(400).json({
+        message: "All CompawnionSched fields are required.",
+      });
+    }
+
+    const { EventTitle, CSDate, CSTime, GmeetRoom } = CompawnionSched;
+    if (!EventTitle || !CSDate || !CSTime || !GmeetRoom) {
+      return res.status(400).json({
+        message:
+          "CompawnionSched must include EventTitle, CSDate, CSTime, and GmeetRoom.",
+      });
+    }
+
+    try {
+      const userRef = db.collection("Compawnions").doc(id);
+      const userDoc = await userRef.get();
+
+      if (!userDoc.exists) {
+        return res.status(404).json({ message: "Companion not found." });
+      }
+
+      const compawnionSchedArray =
+        userDoc.data().CompawnionUser.CompawnionSched || [];
+      await userRef.update({
+        "CompawnionUser.CompawnionSched":
+          compawnionSchedArray.concat(CompawnionSched),
+      });
+      res.json({ message: "CompawnionSched added successfully." });
+    } catch (error) {
+      console.error("Error adding CompawnionSched:", error);
+      res
+        .status(500)
+        .json({
+          message: "Failed to add CompawnionSched.",
+          error: error.message,
+        });
+    }
+  });
+
+  // Get response for companion details
+  Compawnions.get("/schedules/:companionId", async (req, res) => {
+    const { companionId } = req.params; // Extract companionId from route parameters
+
+    if (!companionId) {
+      return res.status(400).json({ message: "Companion ID is required." });
+    }
+
+    try {
+      // Locate the companion document by ID
+      const userDoc = await db.collection("Compawnions").doc(companionId).get();
+
+      if (!userDoc.exists) {
+        return res.status(404).json({ message: "Companion not found." });
+      }
+
+      // Extract the user's details
+      const userData = userDoc.data().CompawnionUser;
+
+      const companionDetails = {
+        MedSched: userData.MedSched || [],
+        TrustedVet: userData.TrustedVet || [],
+        CompawnionSched: userData.CompawnionSched || [],
+      };
+
+      res.json({
+        message: "Companion details retrieved successfully.",
+        data: companionDetails,
+      });
+    } catch (error) {
+      console.error("Error retrieving companion details:", error); // Log the error
+      res.status(500).json({
+        message: "Failed to retrieve companion details.",
+        error: error.message,
+      }); // Include error message in response
+    }
+  });
 
   // Get the adopted animal owned by the Companion using their appPetID
   Compawnions.get("/myPets/:companionId", async (req, res) => {
