@@ -415,12 +415,10 @@ module.exports = function (db, storage) {
       res.json({ message: "CompawnionSched added successfully." });
     } catch (error) {
       console.error("Error adding CompawnionSched:", error);
-      res
-        .status(500)
-        .json({
-          message: "Failed to add CompawnionSched.",
-          error: error.message,
-        });
+      res.status(500).json({
+        message: "Failed to add CompawnionSched.",
+        error: error.message,
+      });
     }
   });
 
@@ -459,6 +457,94 @@ module.exports = function (db, storage) {
         message: "Failed to retrieve companion details.",
         error: error.message,
       }); // Include error message in response
+    }
+  });
+
+  // Route to get MedSched details
+  Compawnions.get("/MedSched/:companionId", async (req, res) => {
+    const { companionId } = req.params;
+
+    if (!companionId) {
+      return res.status(400).json({ message: "Companion ID is required." });
+    }
+
+    try {
+      const userDoc = await db.collection("Compawnions").doc(companionId).get();
+
+      if (!userDoc.exists) {
+        return res.status(404).json({ message: "Companion not found." });
+      }
+
+      const medSched = userDoc.data().CompawnionUser?.MedSched || [];
+      res.json({
+        message: "MedSched details retrieved successfully.",
+        data: medSched,
+      });
+    } catch (error) {
+      console.error("Error retrieving MedSched details:", error);
+      res.status(500).json({
+        message: "Failed to retrieve MedSched details.",
+        error: error.message,
+      });
+    }
+  });
+
+  // Route to get TrustedVet details
+  Compawnions.get("/TrustedVet/:companionId", async (req, res) => {
+    const { companionId } = req.params;
+
+    if (!companionId) {
+      return res.status(400).json({ message: "Companion ID is required." });
+    }
+
+    try {
+      const userDoc = await db.collection("Compawnions").doc(companionId).get();
+
+      if (!userDoc.exists) {
+        return res.status(404).json({ message: "Companion not found." });
+      }
+
+      const trustedVet = userDoc.data().CompawnionUser?.TrustedVet || [];
+      res.json({
+        message: "TrustedVet details retrieved successfully.",
+        data: trustedVet,
+      });
+    } catch (error) {
+      console.error("Error retrieving TrustedVet details:", error);
+      res.status(500).json({
+        message: "Failed to retrieve TrustedVet details.",
+        error: error.message,
+      });
+    }
+  });
+
+  // Route to get CompawnionSched details
+  Compawnions.get("/CompawnionSched/:companionId", async (req, res) => {
+    const { companionId } = req.params;
+
+    if (!companionId) {
+      return res.status(400).json({ message: "Companion ID is required." });
+    }
+
+    try {
+      const userDoc = await db.collection("Compawnions").doc(companionId).get();
+
+      if (!userDoc.exists) {
+        return res.status(404).json({ message: "Companion not found." });
+      }
+
+      const compawnionSched =
+        userDoc.data().CompawnionUser?.CompawnionSched || [];
+      res.json({
+        message: "CompawnionSched details retrieved successfully.",
+        data: compawnionSched,
+      });
+    } catch (error) {
+      console.error("Error retrieving CompawnionSched details:", error);
+      res.status(500).json({
+        message: "Failed to retrieve CompawnionSched details.",
+        error: error.message,
+      });
     }
   });
 

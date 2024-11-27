@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Test Companion Routes</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .container {
+        margin-bottom: 30px;
+      }
+      label {
+        font-weight: bold;
+      }
+      input,
+      button {
+        margin: 5px 0;
+        padding: 5px;
+        width: 100%;
+      }
+      button {
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      pre {
+        background-color: #f4f4f4;
+        padding: 10px;
+        border: 1px solid #ddd;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Test Companion Routes</h1>
+
+    <!-- MedSched Route Test -->
+    <div class="container">
+      <h2>MedSched</h2>
+      <label for="medsched-id">Companion ID:</label>
+      <input type="text" id="medsched-id" placeholder="Enter Companion ID" />
+      <button
+        onclick="fetchRoute('MedSched', 'medsched-id', 'medsched-result')"
+      >
+        Fetch MedSched
+      </button>
+      <pre id="medsched-result">Result will appear here...</pre>
+    </div>
+
+    <!-- TrustedVet Route Test -->
+    <div class="container">
+      <h2>TrustedVet</h2>
+      <label for="trustedvet-id">Companion ID:</label>
+      <input type="text" id="trustedvet-id" placeholder="Enter Companion ID" />
+      <button
+        onclick="fetchRoute('TrustedVet', 'trustedvet-id', 'trustedvet-result')"
+      >
+        Fetch TrustedVet
+      </button>
+      <pre id="trustedvet-result">Result will appear here...</pre>
+    </div>
+
+    <!-- CompawnionSched Route Test -->
+    <div class="container">
+      <h2>CompawnionSched</h2>
+      <label for="compawnionsched-id">Companion ID:</label>
+      <input
+        type="text"
+        id="compawnionsched-id"
+        placeholder="Enter Companion ID"
+      />
+      <button
+        onclick="fetchRoute('CompawnionSched', 'compawnionsched-id', 'compawnionsched-result')"
+      >
+        Fetch CompawnionSched
+      </button>
+      <pre id="compawnionsched-result">Result will appear here...</pre>
+    </div>
+
+    <script>
+      async function fetchRoute(route, inputId, resultId) {
+        const id = document.getElementById(inputId).value;
+        const resultElement = document.getElementById(resultId);
+        resultElement.textContent = "Fetching...";
+
+        if (!id) {
+          resultElement.textContent = "Error: Companion ID is required.";
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            `http://localhost:3000/Compawnions/${route}/${id}`
+          );
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const data = await response.json();
+          resultElement.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+          resultElement.textContent = `Error: ${error.message}`;
+        }
+      }
+    </script>
+  </body>
+</html>
