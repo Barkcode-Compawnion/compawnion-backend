@@ -30,12 +30,29 @@
       button:hover {
         background-color: #0056b3;
       }
-      pre {
+      .schedule-cards {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 10px;
+      }
+      .card {
         background-color: #f4f4f4;
-        padding: 10px;
         border: 1px solid #ddd;
-        white-space: pre-wrap;
-        word-wrap: break-word;
+        border-radius: 5px;
+        padding: 15px;
+        width: calc(33% - 20px);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+      .card h3 {
+        margin-top: 0;
+        color: #007bff;
+      }
+      .card p {
+        margin: 5px 0;
+      }
+      .error {
+        color: red;
       }
     </style>
   </head>
@@ -52,7 +69,7 @@
       >
         Fetch MedSched
       </button>
-      <pre id="medsched-result">Result will appear here...</pre>
+      <div id="medsched-result" class="schedule-cards"></div>
     </div>
 
     <!-- TrustedVet Route Test -->
@@ -65,7 +82,7 @@
       >
         Fetch TrustedVet
       </button>
-      <pre id="trustedvet-result">Result will appear here...</pre>
+      <div id="trustedvet-result" class="schedule-cards"></div>
     </div>
 
     <!-- CompawnionSched Route Test -->
@@ -82,17 +99,18 @@
       >
         Fetch CompawnionSched
       </button>
-      <pre id="compawnionsched-result">Result will appear here...</pre>
+      <div id="compawnionsched-result" class="schedule-cards"></div>
     </div>
 
     <script>
       async function fetchRoute(route, inputId, resultId) {
         const id = document.getElementById(inputId).value;
         const resultElement = document.getElementById(resultId);
-        resultElement.textContent = "Fetching...";
+        resultElement.innerHTML = "<p>Fetching...</p>";
 
         if (!id) {
-          resultElement.textContent = "Error: Companion ID is required.";
+          resultElement.innerHTML =
+            '<p class="error">Error: Companion ID is required.</p>';
           return;
         }
 
@@ -104,10 +122,42 @@
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
-          const data = await response.json();
-          resultElement.textContent = JSON.stringify(data, null, 2);
+
+          const result = await response.json();
+          const { data, message } = result; // Assuming API returns `data` and `message`
+          resultElement.innerHTML = `<p>${message}</p>`; // Display message from API if present
+
+          if (Array.isArray(data)) {
+            resultElement.innerHTML += `<p>${data.length} items retrieved:</p>`;
+            resultElement.innerHTML += `<div class="schedule-cards"></div>`;
+            const cardsContainer =
+              resultElement.querySelector(".schedule-cards");
+
+            data.forEach((item) => {
+              const card = document.createElement("div");
+              card.className = "card";
+
+              // Add a title or fallback text
+              const title = document.createElement("h3");
+              title.textContent = item.title || "Schedule Item";
+              card.appendChild(title);
+
+              // Add other fields dynamically
+              for (const key in item) {
+                if (item.hasOwnProperty(key)) {
+                  const paragraph = document.createElement("p");
+                  paragraph.textContent = `${key}: ${item[key]}`;
+                  card.appendChild(paragraph);
+                }
+              }
+
+              cardsContainer.appendChild(card);
+            });
+          } else {
+            resultElement.innerHTML += `<p>No data found or invalid format.</p>`;
+          }
         } catch (error) {
-          resultElement.textContent = `Error: ${error.message}`;
+          resultElement.innerHTML = `<p class="error">Error: ${error.message}</p>`;
         }
       }
     </script>
