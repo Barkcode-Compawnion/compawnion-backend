@@ -118,7 +118,7 @@
       <div>
         <h1 class="greeting" id="greeting">Hello, User</h1>
         <img
-          src="profile-placeholder.png"
+          src="https://i.kym-cdn.com/entries/icons/original/000/010/606/orangutan_square.jpg"
           alt="Profile Picture"
           class="profile-pic"
         />
@@ -132,7 +132,7 @@
           </p>
           <button class="donate-button">Donate Now</button>
         </div>
-        <img src="dog-placeholder.png" alt="Dog" class="dog-image" />
+        <img src="https://i.kym-cdn.com/entries/icons/original/000/010/606/orangutan_square.jpg" alt="Dog" class="dog-image" />
       </div>
 
       <!-- My Pets Section -->
@@ -146,13 +146,14 @@
     <div class="footer">
       <!-- Home Icon (Logout Trigger) -->
       <button class="footer-button" id="homeButton">
-        <img src="home-icon.png" alt="Home Icon" />
+        <img src="https://i.kym-cdn.com/entries/icons/original/000/010/606/orangutan_square.jpg" alt="Home Icon" />
+      </button>
+      <!-- Medical Button with ID for redirection -->
+      <button class="footer-button" id="medicalButton">
+        <img src="https://i.kym-cdn.com/entries/icons/original/000/010/606/orangutan_square.jpg" alt="Medical Icon" />
       </button>
       <button class="footer-button">
-        <img src="medical-icon.png" alt="Medical Icon" />
-      </button>
-      <button class="footer-button">
-        <img src="calendar-icon.png" alt="Calendar Icon" />
+        <img src="https://i.kym-cdn.com/entries/icons/original/000/010/606/orangutan_square.jpg" alt="Calendar Icon" />
       </button>
     </div>
 
@@ -235,6 +236,11 @@
             alert("An error occurred while trying to log out.");
           }
         });
+
+      // Redirect to schedfetch.html when the Medical button is clicked
+      document.getElementById("medicalButton").addEventListener("click", () => {
+        window.location.href = "schedfetch.html";
+      });
     </script>
   </body>
 </html>

@@ -3,120 +3,152 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Test Companion Routes</title>
+    <title>Medical Schedules</title>
     <style>
       body {
+        background-color: #e9e9e9;
         font-family: Arial, sans-serif;
-        margin: 20px;
+        padding: 20px;
       }
-      .container {
-        margin-bottom: 30px;
-      }
-      label {
+      .title {
+        font-size: 50px;
         font-weight: bold;
+        color: #c35e26;
+        margin-bottom: 20px;
       }
-      input,
-      button {
-        margin: 5px 0;
-        padding: 5px;
-        width: 100%;
+      .schedule-list {
+        margin-top: 120px;
+        padding-bottom: 100px;
       }
-      button {
-        background-color: #007bff;
+      .schedule-item {
+        background-color: #fff;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 3px rgba(0, 0, 0, 0.1);
+      }
+      .schedule-title {
+        font-size: 18px;
+        font-weight: bold;
+        color: #c35e26;
+        margin-bottom: 5px;
+      }
+      .schedule-detail {
+        font-size: 14px;
+        color: #45362f;
+      }
+      .button {
+        background-color: #d27d2d;
         color: #fff;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .button:hover {
+        opacity: 0.8;
+      }
+      .modal {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 100%;
+        max-width: 400px;
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+      }
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 15px;
+      }
+      .modal-header h2 {
+        margin: 0;
+      }
+      .modal-content input {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+      }
+      .footer {
+        display: flex;
+        justify-content: space-around;
+        margin-top: 20px;
+        border-top: 1px solid #d27d2d;
+        padding: 10px;
+        background-color: #fff;
+      }
+      .footer button {
+        background: none;
         border: none;
         cursor: pointer;
       }
-      button:hover {
-        background-color: #0056b3;
-      }
-      .schedule-cards {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin-top: 10px;
-      }
-      .card {
-        background-color: #f4f4f4;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        padding: 15px;
-        width: calc(33% - 20px);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-      }
-      .card h3 {
-        margin-top: 0;
-        color: #007bff;
-      }
-      .card p {
-        margin: 5px 0;
-      }
-      .error {
-        color: red;
+      .footer img {
+        width: 30px;
+        height: 30px;
       }
     </style>
   </head>
   <body>
-    <h1>Test Companion Routes</h1>
-
-    <!-- MedSched Route Test -->
-    <div class="container">
-      <h2>MedSched</h2>
-      <label for="medsched-id">Companion ID:</label>
-      <input type="text" id="medsched-id" placeholder="Enter Companion ID" />
-      <button
-        onclick="fetchRoute('MedSched', 'medsched-id', 'medsched-result')"
-      >
-        Fetch MedSched
-      </button>
-      <div id="medsched-result" class="schedule-cards"></div>
-    </div>
-
-    <!-- TrustedVet Route Test -->
-    <div class="container">
-      <h2>TrustedVet</h2>
-      <label for="trustedvet-id">Companion ID:</label>
-      <input type="text" id="trustedvet-id" placeholder="Enter Companion ID" />
-      <button
-        onclick="fetchRoute('TrustedVet', 'trustedvet-id', 'trustedvet-result')"
-      >
-        Fetch TrustedVet
-      </button>
-      <div id="trustedvet-result" class="schedule-cards"></div>
-    </div>
-
-    <!-- CompawnionSched Route Test -->
-    <div class="container">
-      <h2>CompawnionSched</h2>
-      <label for="compawnionsched-id">Companion ID:</label>
-      <input
-        type="text"
-        id="compawnionsched-id"
-        placeholder="Enter Companion ID"
-      />
-      <button
-        onclick="fetchRoute('CompawnionSched', 'compawnionsched-id', 'compawnionsched-result')"
-      >
-        Fetch CompawnionSched
-      </button>
-      <div id="compawnionsched-result" class="schedule-cards"></div>
+    <div id="app">
+      <div class="title">Medical<br />Schedules</div>
+      <div id="schedule-list" class="schedule-list"></div>
+      <button class="button" id="addScheduleBtn">Add New Schedule</button>
+      <div id="modal" class="modal">
+        <div class="modal-header">
+          <h2>Add New Schedule</h2>
+          <button class="button" id="closeModalBtn">Close</button>
+        </div>
+        <div class="modal-content">
+          <input type="text" id="titleInput" placeholder="Schedule Title" />
+          <input
+            type="text"
+            id="dateInput"
+            placeholder="Enter Date (YYYY-MM-DD)"
+          />
+          <input type="text" id="timeInput" placeholder="Enter Time (HH:mm)" />
+          <input type="text" id="vetClinicInput" placeholder="Vet Clinic" />
+          <input type="text" id="petInput" placeholder="Pet" />
+          <button class="button" id="addScheduleSubmitBtn">Add Schedule</button>
+        </div>
+      </div>
+      <div class="footer">
+        <button id="medicalBtn">
+          <img src="https://i.kym-cdn.com/entries/icons/original/000/010/606/orangutan_square.jpg" alt="Medical" />
+        </button>
+        <button id="homeBtn">
+          <img src="https://i.kym-cdn.com/entries/icons/original/000/010/606/orangutan_square.jpg" alt="Home" />
+        </button>
+        <button id="calendarBtn">
+          <img src="https://i.kym-cdn.com/entries/icons/original/000/010/606/orangutan_square.jpg" alt="Calendar" />
+        </button>
+      </div>
     </div>
 
     <script>
-      async function fetchRoute(route, inputId, resultId) {
-        const id = document.getElementById(inputId).value;
-        const resultElement = document.getElementById(resultId);
-        resultElement.innerHTML = "<p>Fetching...</p>";
+      async function fetchSchedules() {
+        const companionId = localStorage.getItem("companionId");
 
-        if (!id) {
-          resultElement.innerHTML =
-            '<p class="error">Error: Companion ID is required.</p>';
+        if (!companionId) {
+          console.error("No companion ID found in localStorage");
+          document.getElementById("schedule-list").innerHTML = `
+              <p class="error">Error: Companion ID is missing. Please log in.</p>
+            `;
           return;
         }
 
+        const scheduleList = document.getElementById("schedule-list");
+        scheduleList.innerHTML = "<p>Fetching...</p>";
+
         try {
           const response = await fetch(
-            `http://localhost:3000/Compawnions/${route}/${id}`
+            `http://localhost:3000/Compawnions/MedSched/${companionId}`
           );
 
           if (!response.ok) {
@@ -124,42 +156,99 @@
           }
 
           const result = await response.json();
-          const { data, message } = result; // Assuming API returns `data` and `message`
-          resultElement.innerHTML = `<p>${message}</p>`; // Display message from API if present
+          const { data, message } = result;
 
-          if (Array.isArray(data)) {
-            resultElement.innerHTML += `<p>${data.length} items retrieved:</p>`;
-            resultElement.innerHTML += `<div class="schedule-cards"></div>`;
-            const cardsContainer =
-              resultElement.querySelector(".schedule-cards");
-
-            data.forEach((item) => {
-              const card = document.createElement("div");
-              card.className = "card";
-
-              // Add a title or fallback text
-              const title = document.createElement("h3");
-              title.textContent = item.title || "Schedule Item";
-              card.appendChild(title);
-
-              // Add other fields dynamically
-              for (const key in item) {
-                if (item.hasOwnProperty(key)) {
-                  const paragraph = document.createElement("p");
-                  paragraph.textContent = `${key}: ${item[key]}`;
-                  card.appendChild(paragraph);
-                }
-              }
-
-              cardsContainer.appendChild(card);
+          if (data && Array.isArray(data)) {
+            scheduleList.innerHTML = "";
+            data.forEach((schedule) => {
+              const item = document.createElement("div");
+              item.classList.add("schedule-item");
+              item.innerHTML = `
+                  <div class="schedule-title">${
+                    schedule.SchedTitle || "Untitled"
+                  }</div>
+                  <div class="schedule-detail">Date: ${
+                    schedule.SchedDate || "N/A"
+                  }</div>
+                  <div class="schedule-detail">Time: ${
+                    schedule.SchedTime || "N/A"
+                  }</div>
+                  <div class="schedule-detail">Vet Clinic: ${
+                    schedule.SchedVetClinic || "N/A"
+                  }</div>
+                  <div class="schedule-detail">Pet: ${
+                    schedule.SchedPet || "N/A"
+                  }</div>
+                `;
+              scheduleList.appendChild(item);
             });
           } else {
-            resultElement.innerHTML += `<p>No data found or invalid format.</p>`;
+            scheduleList.innerHTML = `<p class="error">No schedules found or invalid data format.</p>`;
           }
         } catch (error) {
-          resultElement.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+          scheduleList.innerHTML = `<p class="error">Error: ${error.message}</p>`;
         }
       }
+
+      document
+        .getElementById("addScheduleBtn")
+        .addEventListener("click", () => {
+          document.getElementById("modal").style.display = "block";
+        });
+
+      document.getElementById("closeModalBtn").addEventListener("click", () => {
+        document.getElementById("modal").style.display = "none";
+      });
+
+      document
+        .getElementById("addScheduleSubmitBtn")
+        .addEventListener("click", () => {
+          const title = document.getElementById("titleInput").value;
+          const date = document.getElementById("dateInput").value;
+          const time = document.getElementById("timeInput").value;
+          const vetClinic = document.getElementById("vetClinicInput").value;
+          const pet = document.getElementById("petInput").value;
+
+          if (title && date && time && vetClinic && pet) {
+            const newSchedule = { title, date, time, vetClinic, pet };
+            // Append to the schedule list on the frontend (without server update)
+            const scheduleList = document.getElementById("schedule-list");
+            const item = document.createElement("div");
+            item.classList.add("schedule-item");
+            item.innerHTML = `
+              <div class="schedule-title">${newSchedule.title}</div>
+              <div class="schedule-detail">Date: ${newSchedule.date}</div>
+              <div class="schedule-detail">Time: ${newSchedule.time}</div>
+              <div class="schedule-detail">Vet Clinic: ${newSchedule.vetClinic}</div>
+              <div class="schedule-detail">Pet: ${newSchedule.pet}</div>
+            `;
+            scheduleList.appendChild(item);
+            document.getElementById("modal").style.display = "none";
+            clearForm();
+          } else {
+            alert("Please fill in all fields");
+          }
+        });
+
+      function clearForm() {
+        document.getElementById("titleInput").value = "";
+        document.getElementById("dateInput").value = "";
+        document.getElementById("timeInput").value = "";
+        document.getElementById("vetClinicInput").value = "";
+        document.getElementById("petInput").value = "";
+      }
+
+      fetchSchedules(); // Fetch schedules on initial load
+
+      // Redirect to schedfetch.html when the Medical button is clicked
+      document.getElementById("medicalBtn").addEventListener("click", () => {
+        window.location.href = "schedfetch.html";
+      });
+
+      // Redirect to schedfetch.html when the Medical button is clicked
+      document.getElementById("homeBtn").addEventListener("click", () => {
+        window.location.href = "c.pet.html";
+      });
     </script>
   </body>
 </html>
