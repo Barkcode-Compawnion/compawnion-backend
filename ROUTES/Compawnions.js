@@ -296,8 +296,8 @@ module.exports = function (db, storage) {
     }
   });
 
-  Compawnions.post("/addMedSched/:id", async (req, res) => {
-    const { id } = req.params;
+  Compawnions.post("/addMedSched/:companionId", async (req, res) => {
+    const { companionId } = req.params;
     const { MedSched } = req.body;
 
     if (!MedSched) {
@@ -322,7 +322,7 @@ module.exports = function (db, storage) {
     }
 
     try {
-      const userRef = db.collection("Compawnions").doc(id);
+      const userRef = db.collection("Compawnions").doc(companionId);
       const userDoc = await userRef.get();
 
       if (!userDoc.exists) {
@@ -342,8 +342,8 @@ module.exports = function (db, storage) {
     }
   });
 
-  Compawnions.post("/addTrustedVet/:id", async (req, res) => {
-    const { id } = req.params;
+  Compawnions.post("/addTrustedVet/:companionId", async (req, res) => {
+    const { companionId } = req.params;
     const { TrustedVet } = req.body;
 
     if (!TrustedVet) {
@@ -360,7 +360,7 @@ module.exports = function (db, storage) {
     }
 
     try {
-      const userRef = db.collection("Compawnions").doc(id);
+      const userRef = db.collection("Compawnions").doc(companionId);
       const userDoc = await userRef.get();
 
       if (!userDoc.exists) {
@@ -380,8 +380,8 @@ module.exports = function (db, storage) {
     }
   });
 
-  Compawnions.post("/addCompawnionSched/:id", async (req, res) => {
-    const { id } = req.params;
+  Compawnions.post("/addCompawnionSched/:companionId", async (req, res) => {
+    const { companionId } = req.params;
     const { CompawnionSched } = req.body;
 
     if (!CompawnionSched) {
@@ -399,7 +399,7 @@ module.exports = function (db, storage) {
     }
 
     try {
-      const userRef = db.collection("Compawnions").doc(id);
+      const userRef = db.collection("Compawnions").doc(companionId);
       const userDoc = await userRef.get();
 
       if (!userDoc.exists) {
@@ -619,6 +619,142 @@ module.exports = function (db, storage) {
       res.status(500).json({ message: "Error deleting Companion." });
     }
   });
+
+  Compawnions.delete(
+    "/deleteMedSched/:companionId/:index",
+    async (req, res) => {
+      const { companionId, index } = req.params;
+      const indexNumber = parseInt(index, 10);
+
+      if (isNaN(indexNumber)) {
+        return res.status(400).json({
+          message: "Invalid index provided.",
+        });
+      }
+
+      try {
+        const userRef = db.collection("Compawnions").doc(companionId);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+          return res.status(404).json({ message: "Companion not found." });
+        }
+
+        let medSchedArray = userDoc.data().CompawnionUser.MedSched || [];
+
+        if (indexNumber < 0 || indexNumber >= medSchedArray.length) {
+          return res.status(400).json({
+            message: "Index out of bounds.",
+          });
+        }
+
+        medSchedArray.splice(indexNumber, 1); // Remove the item at the specified index.
+
+        await userRef.update({
+          "CompawnionUser.MedSched": medSchedArray,
+        });
+
+        res.json({ message: "MedSched deleted successfully." });
+      } catch (error) {
+        console.error("Error deleting MedSched:", error);
+        res.status(500).json({
+          message: "Failed to delete MedSched.",
+          error: error.message,
+        });
+      }
+    }
+  );
+
+  Compawnions.delete(
+    "/deleteTrustedVet/:companionId/:index",
+    async (req, res) => {
+      const { companionId, index } = req.params;
+      const indexNumber = parseInt(index, 10);
+
+      if (isNaN(indexNumber)) {
+        return res.status(400).json({
+          message: "Invalid index provided.",
+        });
+      }
+
+      try {
+        const userRef = db.collection("Compawnions").doc(companionId);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+          return res.status(404).json({ message: "Companion not found." });
+        }
+
+        let trustedVetArray = userDoc.data().CompawnionUser.TrustedVet || [];
+
+        if (indexNumber < 0 || indexNumber >= trustedVetArray.length) {
+          return res.status(400).json({
+            message: "Index out of bounds.",
+          });
+        }
+
+        trustedVetArray.splice(indexNumber, 1); // Remove the item at the specified index.
+
+        await userRef.update({
+          "CompawnionUser.TrustedVet": trustedVetArray,
+        });
+
+        res.json({ message: "TrustedVet deleted successfully." });
+      } catch (error) {
+        console.error("Error deleting TrustedVet:", error);
+        res.status(500).json({
+          message: "Failed to delete TrustedVet.",
+          error: error.message,
+        });
+      }
+    }
+  );
+
+  Compawnions.delete(
+    "/deleteCompawnionSched/:companionId/:index",
+    async (req, res) => {
+      const { companionId, index } = req.params;
+      const indexNumber = parseInt(index, 10);
+
+      if (isNaN(indexNumber)) {
+        return res.status(400).json({
+          message: "Invalid index provided.",
+        });
+      }
+
+      try {
+        const userRef = db.collection("Compawnions").doc(companionId);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+          return res.status(404).json({ message: "Companion not found." });
+        }
+
+        let compawnionSchedArray =
+          userDoc.data().CompawnionUser.CompawnionSched || [];
+
+        if (indexNumber < 0 || indexNumber >= compawnionSchedArray.length) {
+          return res.status(400).json({
+            message: "Index out of bounds.",
+          });
+        }
+
+        compawnionSchedArray.splice(indexNumber, 1); // Remove the item at the specified index.
+
+        await userRef.update({
+          "CompawnionUser.CompawnionSched": compawnionSchedArray,
+        });
+
+        res.json({ message: "CompawnionSched deleted successfully." });
+      } catch (error) {
+        console.error("Error deleting CompawnionSched:", error);
+        res.status(500).json({
+          message: "Failed to delete CompawnionSched.",
+          error: error.message,
+        });
+      }
+    }
+  );
 
   return Compawnions;
 };

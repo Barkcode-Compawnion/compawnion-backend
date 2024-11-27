@@ -132,7 +132,11 @@
           </p>
           <button class="donate-button">Donate Now</button>
         </div>
-        <img src="https://i.kym-cdn.com/entries/icons/original/000/010/606/orangutan_square.jpg" alt="Dog" class="dog-image" />
+        <img
+          src="https://i.kym-cdn.com/entries/icons/original/000/010/606/orangutan_square.jpg"
+          alt="Dog"
+          class="dog-image"
+        />
       </div>
 
       <!-- My Pets Section -->
@@ -146,14 +150,23 @@
     <div class="footer">
       <!-- Home Icon (Logout Trigger) -->
       <button class="footer-button" id="homeButton">
-        <img src="https://i.kym-cdn.com/entries/icons/original/000/010/606/orangutan_square.jpg" alt="Home Icon" />
+        <img
+          src="https://i.kym-cdn.com/entries/icons/original/000/010/606/orangutan_square.jpg"
+          alt="Home Icon"
+        />
       </button>
       <!-- Medical Button with ID for redirection -->
       <button class="footer-button" id="medicalButton">
-        <img src="https://i.kym-cdn.com/entries/icons/original/000/010/606/orangutan_square.jpg" alt="Medical Icon" />
+        <img
+          src="https://i.kym-cdn.com/entries/icons/original/000/010/606/orangutan_square.jpg"
+          alt="Medical Icon"
+        />
       </button>
-      <button class="footer-button">
-        <img src="https://i.kym-cdn.com/entries/icons/original/000/010/606/orangutan_square.jpg" alt="Calendar Icon" />
+      <button class="footer-button" id="compawnionButton">
+        <img
+          src="https://i.kym-cdn.com/entries/icons/original/000/010/606/orangutan_square.jpg"
+          alt="Calendar Icon"
+        />
       </button>
     </div>
 
@@ -241,6 +254,12 @@
       document.getElementById("medicalButton").addEventListener("click", () => {
         window.location.href = "schedfetch.html";
       });
+
+      // Redirect to schedfetch.html when the Medical button is clicked
+      document.getElementById("compawnionButton").addEventListener("click", () => {
+        window.location.href = "compawnionsched.html";
+      });
+      
     </script>
   </body>
 </html>
