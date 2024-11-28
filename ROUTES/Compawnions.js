@@ -605,6 +605,158 @@ module.exports = function (db, storage) {
       res.status(500).json({ message: "Error updating Companion." });
     }
   });
+
+  Compawnions.put("/updateMedSched/:companionId/:index", async (req, res) => {
+    const { companionId, index } = req.params;
+    const indexNumber = parseInt(index, 10);
+    const { MedSched } = req.body;
+
+    if (isNaN(indexNumber)) {
+      return res.status(400).json({
+        message: "Invalid index provided.",
+      });
+    }
+
+    if (!MedSched) {
+      return res.status(400).json({
+        message: "MedSched data is required for updating.",
+      });
+    }
+
+    try {
+      const userRef = db.collection("Compawnions").doc(companionId);
+      const userDoc = await userRef.get();
+
+      if (!userDoc.exists) {
+        return res.status(404).json({ message: "Companion not found." });
+      }
+
+      let medSchedArray = userDoc.data().CompawnionUser.MedSched || [];
+
+      if (indexNumber < 0 || indexNumber >= medSchedArray.length) {
+        return res.status(400).json({
+          message: "Index out of bounds.",
+        });
+      }
+
+      medSchedArray[indexNumber] = MedSched;
+
+      await userRef.update({
+        "CompawnionUser.MedSched": medSchedArray,
+      });
+
+      res.json({ message: "MedSched updated successfully." });
+    } catch (error) {
+      console.error("Error updating MedSched:", error);
+      res.status(500).json({
+        message: "Failed to update MedSched.",
+        error: error.message,
+      });
+    }
+  });
+
+  Compawnions.put("/updateTrustedVet/:companionId/:index", async (req, res) => {
+    const { companionId, index } = req.params;
+    const indexNumber = parseInt(index, 10);
+    const { TrustedVet } = req.body;
+
+    if (isNaN(indexNumber)) {
+      return res.status(400).json({
+        message: "Invalid index provided.",
+      });
+    }
+
+    if (!TrustedVet) {
+      return res.status(400).json({
+        message: "TrustedVet data is required for updating.",
+      });
+    }
+
+    try {
+      const userRef = db.collection("Compawnions").doc(companionId);
+      const userDoc = await userRef.get();
+
+      if (!userDoc.exists) {
+        return res.status(404).json({ message: "Companion not found." });
+      }
+
+      let trustedVetArray = userDoc.data().CompawnionUser.TrustedVet || [];
+
+      if (indexNumber < 0 || indexNumber >= trustedVetArray.length) {
+        return res.status(400).json({
+          message: "Index out of bounds.",
+        });
+      }
+
+      trustedVetArray[indexNumber] = TrustedVet;
+
+      await userRef.update({
+        "CompawnionUser.TrustedVet": trustedVetArray,
+      });
+
+      res.json({ message: "TrustedVet updated successfully." });
+    } catch (error) {
+      console.error("Error updating TrustedVet:", error);
+      res.status(500).json({
+        message: "Failed to update TrustedVet.",
+        error: error.message,
+      });
+    }
+  });
+
+  Compawnions.put(
+    "/updateCompawnionSched/:companionId/:index",
+    async (req, res) => {
+      const { companionId, index } = req.params;
+      const indexNumber = parseInt(index, 10);
+      const { CompawnionSched } = req.body;
+
+      if (isNaN(indexNumber)) {
+        return res.status(400).json({
+          message: "Invalid index provided.",
+        });
+      }
+
+      if (!CompawnionSched) {
+        return res.status(400).json({
+          message: "CompawnionSched data is required for updating.",
+        });
+      }
+
+      try {
+        const userRef = db.collection("Compawnions").doc(companionId);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+          return res.status(404).json({ message: "Companion not found." });
+        }
+
+        let compawnionSchedArray =
+          userDoc.data().CompawnionUser.CompawnionSched || [];
+
+        if (indexNumber < 0 || indexNumber >= compawnionSchedArray.length) {
+          return res.status(400).json({
+            message: "Index out of bounds.",
+          });
+        }
+
+        compawnionSchedArray[indexNumber] = CompawnionSched;
+
+        await userRef.update({
+          "CompawnionUser.CompawnionSched": compawnionSchedArray,
+        });
+
+        res.json({ message: "CompawnionSched updated successfully." });
+      } catch (error) {
+        console.error("Error updating CompawnionSched:", error);
+        res.status(500).json({
+          message: "Failed to update CompawnionSched.",
+          error: error.message,
+        });
+      }
+    }
+  );
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
