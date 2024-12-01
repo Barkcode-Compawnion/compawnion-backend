@@ -50,13 +50,13 @@ module.exports = function (db) {
         "Your Pet Adoption Application Has Been Approved for an Online Meeting!",
       html: `
       <h1>Congratulations! Your Online Application Meeting Has Been Approved</h1>
-      <p>Dear ${applicationData.applicant?.name || "Valued Applicant"},</p>
+      <p>Dear ${applicationData.applicant?.name?.firstName || "Valued Applicant"} ${applicationData.applicant?.name?.middleName || "Valued Applicant"} ${applicationData.applicant?.name?.lastName || "Valued Applicant"},</p>
       <p>We are excited to inform you that your online pet adoption application meeting has been approved!</p>
       <p><strong>Meeting Details:</strong></p>
       <ul>
-        <li>Room Link: <a href="${roomLink}">${roomLink}</a></li>
-        <li>Date: ${Date}</li>
-        <li>Time: ${Time}</li>
+        <li>Room Link: <a href="${applicationData.schedules?.roomLink}">${applicationData.schedules?.roomLink}</a></li>
+        <li>Date: ${applicationData.schedules?.meetingDate}</li>
+        <li>Time: ${applicationData.schedules?.Time}</li>
       </ul>
       <p><strong>Your Application Details:</strong></p>
       <ul>
@@ -90,11 +90,11 @@ module.exports = function (db) {
         "Your Pet Adoption Application Has Been Approved for an Onsite Meeting!",
       html: `
       <h1>Congratulations! Your Onsite Application Meeting Has Been Approved</h1>
-      <p>Dear ${applicationData.applicant?.name || "Valued Applicant"},</p>
+      <p>Dear ${applicationData.applicant?.name?.firstName || "Valued Applicant"} ${applicationData.applicant?.name?.middleName || "Valued Applicant"} ${applicationData.applicant?.name?.lastName || "Valued Applicant"},</p>
       <p>We are excited to inform you that your onsite pet adoption application meeting has been approved!</p>
       <p><strong>Meeting Details:</strong></p>
       <ul>
-        <li>Onsite Meeting Date: ${OnsiteMeetingDate}</li>
+        <li>Onsite Meeting Date: ${applicationData.schedules?.OnsiteMeetingDate}</li>
       </ul>
       <p><strong>Your Application Details:</strong></p>
       <ul>
@@ -131,7 +131,7 @@ module.exports = function (db) {
       subject: "Your Pet Adoption Application Has Been Approved!",
       html: `
         <h1>Congratulations! Your Application Has Been Approved</h1>
-        <p>Dear ${applicationData.applicant?.name || "Valued Applicant"},</p>
+      <p>Dear ${applicationData.applicant?.name?.firstName || "Valued Applicant"} ${applicationData.applicant?.name?.middleName || "Valued Applicant"} ${applicationData.applicant?.name?.lastName || "Valued Applicant"},</p>
         <p>We are pleased to inform you that your pet adoption application has been approved!</p>
         <p><strong>Your Application Details:</strong></p>
         <ul>
