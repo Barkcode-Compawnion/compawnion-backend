@@ -55,8 +55,12 @@ module.exports = function (db) {
       <p>We are excited to inform you that your application has been successfully submitted.</p>
       <p><strong>Your Application Details:</strong></p>
       <ul>
-        <li>Terms and Conditions: ${applicationData.termsAndCondission ? "Yes" : "No"}</li>
-        <li>Payment Agreement: ${applicationData.paymentAgreement  ? "Yes" : "No"}</li>
+        <li>Terms and Conditions: ${
+          applicationData.termsAndCondission ? "Yes" : "No"
+        }</li>
+        <li>Payment Agreement: ${
+          applicationData.paymentAgreement ? "Yes" : "No"
+        }</li>
         <li>Application Type: ${applicationData.applicationType}</li>
         <li>Application ID: ${applicationData.applicationAppId}</li>
         <li>Application Pet ID: ${
@@ -82,9 +86,7 @@ module.exports = function (db) {
         <li>Phone Number: ${
           applicationData.applicant?.contact?.phoneNumber
         }</li>
-        <li>Facebook: ${
-          applicationData.applicant?.contact?.facebook || ""
-        }</li>
+        <li>Facebook: ${applicationData.applicant?.contact?.facebook || ""}</li>
       </ul>
       <p><strong>Dwelling Information:</strong></p>
       <ul>
@@ -457,6 +459,24 @@ module.exports = function (db) {
       await appRef.set(newApplication);
       console.log("Application added with ID:", formattedAppId);
 
+      // Transfer pet data to PENDINGPETS and delete from RescuedAnimals
+      const petData = petDoc.data();
+      const pendingPetsRef = db.collection("PENDINGPETS").doc(petId);
+
+      // Copy the data from the existing pet document to the PENDINGPETS collection
+      await pendingPetsRef.set({
+        ...petData,
+        status: "Pending Adoption",
+        appPetID: appPetID || null, // Ensure appPetID is included (null if not provided)
+      });
+
+      // Delete the pet document from RescuedAnimals after transfer
+      await db.collection("RescuedAnimals").doc(petId).delete();
+
+      console.log(
+        `Pet ${petId} transferred to PENDINGPETS collection and deleted from RescuedAnimals.`
+      );
+
       return res
         .status(201)
         .send({ message: `Application added with ID: ${formattedAppId}` });
@@ -662,7 +682,7 @@ module.exports = function (db) {
       await sendApprovalEmail(email, applicationData);
 
       // Fetch pet data from "RescuedAnimals" collection
-      const petRef = db.collection("RescuedAnimals").doc(petId);
+      const petRef = db.collection("PENDINGPETS").doc(petId);
       const petDoc = await petRef.get();
 
       if (!petDoc.exists) {
