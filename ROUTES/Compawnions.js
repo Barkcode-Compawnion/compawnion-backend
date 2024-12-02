@@ -89,9 +89,11 @@ module.exports = function (db, storage) {
   /**
    * POST: Register a new Companion.
    */
+  // Register Companion
+  // Register Companion
   Compawnions.post("/register", async (req, res) => {
     const {
-      accountCreate: { Name, Username, Email, Password },
+      accountCreate: { Name, Username, Email, Password, Profile }, // Profile is optional
       appPetID, // New parameter to associate adopted pet
     } = req.body;
 
@@ -120,6 +122,16 @@ module.exports = function (db, storage) {
         return res.status(400).json({ message: "Username already exists." });
       }
 
+      // Check for duplicate email
+      const existingEmailSnapshot = await db
+        .collection("Compawnions")
+        .where("CompawnionUser.accountCreate.Email", "==", Email)
+        .get();
+
+      if (!existingEmailSnapshot.empty) {
+        return res.status(400).json({ message: "Email already in use." });
+      }
+
       // Send the email with unencrypted password before hashing it
       await sendCompawnionRegistrationEmail(Email, Username, Name, Password);
 
@@ -130,22 +142,29 @@ module.exports = function (db, storage) {
       const compId = await getNextCompId();
       const formattedCompId = compId.toString().padStart(3, "0");
 
-      // Create a new Companion document
+      // Create a new Companion document with optional Profile field
+      const newCompanionData = {
+        CompawnionUser: {
+          accountCreate: {
+            Username,
+            Email,
+            Password: hashedPassword,
+            Profile: Profile || null, // Set to null if not provided
+          },
+          MedSched: [],
+          TrustedVet: [],
+          CompawnionSched: [],
+          appPetID, // Link to adopted pet
+        },
+        Status: "Inactive", // Default status
+        LastLogin: null,
+        LastLogout: null,
+      };
+
       await db
         .collection("Compawnions")
         .doc(formattedCompId)
-        .set({
-          CompawnionUser: {
-            accountCreate: { Username, Email, Password: hashedPassword },
-            MedSched: [],
-            TrustedVet: [],
-            CompawnionSched: [],
-            appPetID, // Link to adopted pet
-          },
-          Status: "Inactive", // Default status
-          LastLogin: null,
-          LastLogout: null,
-        });
+        .set(newCompanionData);
 
       res.status(201).json({
         message: `Companion registered successfully with ID: ${formattedCompId}`,
@@ -593,16 +612,45 @@ module.exports = function (db, storage) {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  // Update Companion
-  Compawnions.put("/:id", async (req, res) => {
+  // Update Companion's account information, including Profile
+  // Update Companion's account information, including Profile
+  Compawnions.put("/accountUpdate/:companionId", async (req, res) => {
     try {
-      const userId = req.params.id;
-      const userRef = db.collection("Compawnions").doc(userId);
-      const updatedUser = req.body;
-      await userRef.update(updatedUser);
-      res.json({ message: "Companion updated successfully." });
+      const companionId = req.params.companionId;
+      const { accountCreate } = req.body; // Expecting accountCreate data to be updated
+
+      if (!accountCreate) {
+        return res
+          .status(400)
+          .json({ message: "accountCreate data is required." });
+      }
+
+      // Check if the new password is provided and hash it
+      if (accountCreate.Password) {
+        accountCreate.Password = await bcrypt.hash(accountCreate.Password, 10);
+      }
+
+      // Reference to the specific document in the Compawnions collection
+      const userRef = db.collection("Compawnions").doc(companionId);
+
+      // Get the current document data to merge changes
+      const userDoc = await userRef.get();
+      if (!userDoc.exists) {
+        return res.status(404).json({ message: "Companion not found." });
+      }
+
+      // Update the accountCreate subfield with the new data, including Profile
+      await userRef.update({
+        "CompawnionUser.accountCreate": {
+          ...userDoc.data().CompawnionUser.accountCreate,
+          ...accountCreate, // Merge new data with existing fields
+        },
+      });
+
+      res.json({ message: "Companion account updated successfully." });
     } catch (error) {
-      res.status(500).json({ message: "Error updating Companion." });
+      console.error("Error updating companion account:", error);
+      res.status(500).json({ message: "Error updating companion account." });
     }
   });
 
