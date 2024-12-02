@@ -39,6 +39,92 @@ module.exports = function (db) {
     }
   }
 
+  // Emailer function
+  async function sendApplicationEmail(email, applicationData) {
+    const mailOptions = {
+      from: "barkcodecompawnion@gmail.com",
+      to: email,
+      subject: "Your Application Form Has Been Submitted!",
+      html: `
+      <h1>Congratulations! Your Application Form Has Been Submitted</h1>
+      <p>Dear ${
+        applicationData.applicant?.name?.firstName || "Valued Applicant"
+      } ${applicationData.applicant?.name?.middleName || ""} ${
+        applicationData.applicant?.name?.lastName || ""
+      },</p>
+      <p>We are excited to inform you that your application has been successfully submitted.</p>
+      <p><strong>Your Application Details:</strong></p>
+      <ul>
+        <li>Terms and Conditions: ${applicationData.termsAndCondission ? "Yes" : "No"}</li>
+        <li>Payment Agreement: ${applicationData.paymentAgreement  ? "Yes" : "No"}</li>
+        <li>Application Type: ${applicationData.applicationType}</li>
+        <li>Application ID: ${applicationData.applicationAppId}</li>
+        <li>Application Pet ID: ${
+          applicationData.appPetID || "Not Assigned Yet"
+        }</li>
+        <li>Pet ID: ${applicationData.petId}</li>
+      </ul>
+      <p><strong>Applicant Details:</strong></p>
+      <ul>
+        <li>Name: ${applicationData.applicant?.name?.firstName} ${
+        applicationData.applicant?.name?.middleName || ""
+      } ${applicationData.applicant?.name?.lastName}</li>
+        <li>Birthdate: ${applicationData.applicant?.birthdate}</li>
+        <li>Occupation: ${applicationData.applicant?.occupation}</li>
+        <li>Address: ${applicationData.applicant?.address?.lot || ""} ${
+        applicationData.applicant?.address?.street || ""
+      }, ${applicationData.applicant?.address?.baranggay || ""}, ${
+        applicationData.applicant?.address?.cityOrMunicipality || ""
+      }, ${applicationData.applicant?.address?.province || ""}, ${
+        applicationData.applicant?.address?.country || ""
+      }</li>
+        <li>Contact Email: ${applicationData.applicant?.contact?.email}</li>
+        <li>Phone Number: ${
+          applicationData.applicant?.contact?.phoneNumber
+        }</li>
+        <li>Facebook: ${
+          applicationData.applicant?.contact?.facebook || ""
+        }</li>
+      </ul>
+      <p><strong>Dwelling Information:</strong></p>
+      <ul>
+        <li>Type: ${applicationData.dwelling?.type}</li>
+        <li>Ownership: ${applicationData.dwelling?.ownership}</li>
+        <li>Number of House Members: ${
+          applicationData.dwelling?.numberOfHouseMembers
+        }</li>
+        <li>Number of Pets: ${applicationData.dwelling?.numberOfPets}</li>
+        <li>Pets Allowed in House: ${
+          applicationData.dwelling?.petsAllowedInHouse ? "Yes" : "No"
+        }</li>
+        <li>Planning to Move Out: ${
+          applicationData.dwelling?.planningToMoveOut ? "Yes" : "No"
+        }</li>
+      </ul>
+      <p><strong>Pet Care Information:</strong></p>
+      <ul>
+        <li>Pet Ownership Experience: ${
+          applicationData.petCare?.petOwnershipExperience || "N/A"
+        }</li>
+        <li>Veterinarian: ${applicationData.petCare?.veterinarian || "N/A"}</li>
+      </ul>
+      <p>Status: ${applicationData.status}</p>
+      <p>Our team will review your application and contact you shortly. If you have any questions, feel free to reach out to us.</p>
+      <p>Thank you for choosing to adopt!</p>
+    `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    await db.collection("EmailLogs").add({
+      applicationId: applicationData.applicationAppId,
+      appPetID: applicationData.appPetID,
+      recipientEmail: email,
+      sentAt: new Date(),
+      status: "sent",
+      type: "application_notification",
+    });
+  }
+
   // Function to send email for online approval
   async function sendOnlineApprovalEmail(email, applicationData, schedules) {
     const { roomLink, meetingDate, Time } = schedules;
@@ -50,11 +136,17 @@ module.exports = function (db) {
         "Your Pet Adoption Application Has Been Approved for an Online Meeting!",
       html: `
       <h1>Congratulations! Your Online Application Meeting Has Been Approved</h1>
-      <p>Dear ${applicationData.applicant?.name?.firstName || "Valued Applicant"} ${applicationData.applicant?.name?.middleName || "Valued Applicant"} ${applicationData.applicant?.name?.lastName || "Valued Applicant"},</p>
+      <p>Dear ${
+        applicationData.applicant?.name?.firstName || "Valued Applicant"
+      } ${applicationData.applicant?.name?.middleName || "Valued Applicant"} ${
+        applicationData.applicant?.name?.lastName || "Valued Applicant"
+      },</p>
       <p>We are excited to inform you that your online pet adoption application meeting has been approved!</p>
       <p><strong>Meeting Details:</strong></p>
       <ul>
-        <li>Room Link: <a href="${applicationData.schedules?.roomLink}">${applicationData.schedules?.roomLink}</a></li>
+        <li>Room Link: <a href="${applicationData.schedules?.roomLink}">${
+        applicationData.schedules?.roomLink
+      }</a></li>
         <li>Date: ${applicationData.schedules?.meetingDate}</li>
         <li>Time: ${applicationData.schedules?.Time}</li>
       </ul>
@@ -90,11 +182,17 @@ module.exports = function (db) {
         "Your Pet Adoption Application Has Been Approved for an Onsite Meeting!",
       html: `
       <h1>Congratulations! Your Onsite Application Meeting Has Been Approved</h1>
-      <p>Dear ${applicationData.applicant?.name?.firstName || "Valued Applicant"} ${applicationData.applicant?.name?.middleName || "Valued Applicant"} ${applicationData.applicant?.name?.lastName || "Valued Applicant"},</p>
+      <p>Dear ${
+        applicationData.applicant?.name?.firstName || "Valued Applicant"
+      } ${applicationData.applicant?.name?.middleName || "Valued Applicant"} ${
+        applicationData.applicant?.name?.lastName || "Valued Applicant"
+      },</p>
       <p>We are excited to inform you that your onsite pet adoption application meeting has been approved!</p>
       <p><strong>Meeting Details:</strong></p>
       <ul>
-        <li>Onsite Meeting Date: ${applicationData.schedules?.OnsiteMeetingDate}</li>
+        <li>Onsite Meeting Date: ${
+          applicationData.schedules?.OnsiteMeetingDate
+        }</li>
       </ul>
       <p><strong>Your Application Details:</strong></p>
       <ul>
@@ -131,7 +229,11 @@ module.exports = function (db) {
       subject: "Your Pet Adoption Application Has Been Approved!",
       html: `
         <h1>Congratulations! Your Application Has Been Approved</h1>
-      <p>Dear ${applicationData.applicant?.name?.firstName || "Valued Applicant"} ${applicationData.applicant?.name?.middleName || "Valued Applicant"} ${applicationData.applicant?.name?.lastName || "Valued Applicant"},</p>
+      <p>Dear ${
+        applicationData.applicant?.name?.firstName || "Valued Applicant"
+      } ${applicationData.applicant?.name?.middleName || "Valued Applicant"} ${
+        applicationData.applicant?.name?.lastName || "Valued Applicant"
+      },</p>
         <p>We are pleased to inform you that your pet adoption application has been approved!</p>
         <p><strong>Your Application Details:</strong></p>
         <ul>
@@ -348,6 +450,9 @@ module.exports = function (db) {
         .doc("PENDING")
         .collection("Applications")
         .doc(formattedAppId);
+
+      // Replace the previous sendApplicationEmail line with this one
+      await sendApplicationEmail(email, newApplication);
 
       await appRef.set(newApplication);
       console.log("Application added with ID:", formattedAppId);
@@ -593,7 +698,6 @@ module.exports = function (db) {
     }
   });
 
-
   // transfer all pets back to Rescued Animal
   application.post("/:appPetID/transferback", async (req, res) => {
     const appPetID = req.params.appPetID; // Get appPetID from route parameter
@@ -632,7 +736,6 @@ module.exports = function (db) {
     }
   });
 
-
   // transfer specific pet back to Rescued Animal
   application.post("/:appPetID/transferback/:petId", async (req, res) => {
     const { appPetID, petId } = req.params;
@@ -650,11 +753,9 @@ module.exports = function (db) {
 
       // Check if the specific petId exists in the adopted animal data
       if (!adoptedAnimalData[petId]) {
-        return res
-          .status(404)
-          .json({
-            message: `Pet with ID ${petId} not found in AdoptedAnimals`,
-          });
+        return res.status(404).json({
+          message: `Pet with ID ${petId} not found in AdoptedAnimals`,
+        });
       }
 
       const petData = adoptedAnimalData[petId];
