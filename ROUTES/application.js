@@ -809,35 +809,73 @@ module.exports = function (db) {
   });
 
   // PUT Routes
-  application.put("/:id/reject", async (req, res) => {
-    const appId = req.params.id;
+  application.put("/:appId/reject", async (req, res) => {
+    const appId = req.params.appId;
     try {
+      // Fetch the application document from the PENDING collection
       const appRef = db
         .collection("Applications")
         .doc("PENDING")
         .collection("Applications")
         .doc(appId);
       const appDoc = await appRef.get();
-      if (!appDoc.exists)
+
+      if (!appDoc.exists) {
         return res.status(404).json({ message: "Application not found" });
+      }
 
+      // Retrieve application data
       const applicationData = appDoc.data();
-      applicationData.status = "Rejected";
 
-      await db
+      // Check if the associated pet exists in PENDINGPETS
+      const petId = applicationData.petId;
+      const pendingPetRef = db.collection("PENDINGPETS").doc(petId);
+      const pendingPetDoc = await pendingPetRef.get();
+
+      if (!pendingPetDoc.exists) {
+        return res
+          .status(404)
+          .json({ message: "Associated pet not found in PENDINGPETS" });
+      }
+
+      // Transfer the pet back to RescuedAnimals
+      const petData = pendingPetDoc.data();
+      const rescuedAnimalsRef = db.collection("RescuedAnimals").doc(petId);
+
+      await rescuedAnimalsRef.set({
+        ...petData,
+        status: "Available",
+      });
+
+      // Delete the pet from PENDINGPETS
+      await pendingPetRef.delete();
+
+      // Update the application status to REJECTED
+      applicationData.status = "Rejected";
+      const rejectRef = db
         .collection("Applications")
         .doc("REJECT")
         .collection("Applications")
-        .doc(appId)
-        .set(applicationData);
+        .doc(appId);
+
+      await rejectRef.set(applicationData);
+
+      // Delete the application from PENDING
       await appRef.delete();
 
-      res.json({ message: "Application rejected and moved to REJECT status" });
+      console.log(
+        `Application ${appId} rejected, pet ${petId} transferred back to RescuedAnimals.`
+      );
+
+      res.json({
+        message: `Application ${appId} rejected and pet ${petId} transferred back to RescuedAnimals.`,
+      });
     } catch (error) {
       console.error("Error rejecting application:", error);
-      res
-        .status(500)
-        .json({ message: "Error rejecting application", error: error.message });
+      res.status(500).json({
+        message: "Error rejecting application",
+        error: error.message,
+      });
     }
   });
 
