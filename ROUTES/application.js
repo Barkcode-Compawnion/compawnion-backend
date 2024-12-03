@@ -258,6 +258,44 @@ module.exports = function (db) {
     });
   }
 
+  async function sendRejectionEmail(email, applicationData) {
+    const mailOptions = {
+      from: "barkcodecompawnion@gmail.com",
+      to: email,
+      subject: "Your Pet Adoption Application Has Been Rejected",
+      html: `
+            <h1>We're Sorry to Inform You</h1>
+            <p>Dear ${
+              applicationData.applicant?.name?.firstName || "Valued Applicant"
+            } ${applicationData.applicant?.name?.middleName || ""} ${
+        applicationData.applicant?.name?.lastName || ""
+      },</p>
+            <p>We regret to inform you that your pet adoption application has been rejected. We understand this may be disappointing news.</p>
+            <p><strong>Application Details:</strong></p>
+            <ul>
+                <li>Application ID: ${applicationData.applicationAppId}</li>
+                <li>Pet ID: ${applicationData.petId}</li>
+                <li>Application Pet ID: ${applicationData.appPetID}</li>
+            </ul>
+            <p>If you have any questions or would like further clarification, please feel free to reach out to us.</p>
+            <p>Thank you for your interest in adopting and for supporting animal welfare.</p>
+        `,
+    };
+
+    // Send the email
+    await transporter.sendMail(mailOptions);
+
+    // Log the email sending event
+    await db.collection("EmailLogs").add({
+      applicationId: applicationData.applicationAppId,
+      appPetID: applicationData.appPetID,
+      recipientEmail: email,
+      sentAt: new Date(),
+      status: "sent",
+      type: "rejection_notification",
+    });
+  }
+
   // Routes (GET > POST > PUT > DELETE)
 
   // GET Routes
@@ -826,6 +864,13 @@ module.exports = function (db) {
 
       // Retrieve application data
       const applicationData = appDoc.data();
+      const email = applicationData.applicant?.contact?.email; // Extract email from applicationData
+
+      if (!email) {
+        return res
+          .status(400)
+          .json({ message: "Applicant email not found in application data." });
+      }
 
       // Check if the associated pet exists in PENDINGPETS
       const petId = applicationData.petId;
@@ -862,6 +907,9 @@ module.exports = function (db) {
 
       // Delete the application from PENDING
       await appRef.delete();
+
+      // Send rejection email
+      await sendRejectionEmail(email, applicationData);
 
       console.log(
         `Application ${appId} rejected, pet ${petId} transferred back to RescuedAnimals.`
