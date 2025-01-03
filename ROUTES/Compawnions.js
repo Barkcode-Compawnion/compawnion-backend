@@ -94,7 +94,7 @@ module.exports = function (db, storage) {
   Compawnions.post("/register", async (req, res) => {
     const {
       accountCreate: { Name, Username, Email, Password, Profile }, // Profile is optional
-      appPetID, // New parameter to associate adopted pet
+      appPetID, // Parameter to associate adopted pet
     } = req.body;
 
     if (!appPetID) {
@@ -112,10 +112,28 @@ module.exports = function (db, storage) {
           .json({ message: "Invalid appPetID. Adoption not found." });
       }
 
+      // Check if appPetID already exists in Compawnions collection
+      const existingPetIdSnapshot = await db
+        .collection("Compawnions")
+        .where("CompawnionUser.appPetID", "==", appPetID)
+        .limit(1) // Stop as soon as one match is found
+        .get();
+
+      if (!existingPetIdSnapshot.empty) {
+        console.log(`Duplicate appPetID detected: ${appPetID}`);
+        return res
+          .status(400)
+          .json({
+            message:
+              "This appPetID is already associated with another account.",
+          });
+      }
+
       // Check for duplicate username
       const existingUserSnapshot = await db
         .collection("Compawnions")
         .where("CompawnionUser.accountCreate.Username", "==", Username)
+        .limit(1)
         .get();
 
       if (!existingUserSnapshot.empty) {
@@ -126,6 +144,7 @@ module.exports = function (db, storage) {
       const existingEmailSnapshot = await db
         .collection("Compawnions")
         .where("CompawnionUser.accountCreate.Email", "==", Email)
+        .limit(1)
         .get();
 
       if (!existingEmailSnapshot.empty) {
@@ -142,7 +161,7 @@ module.exports = function (db, storage) {
       const compId = await getNextCompId();
       const formattedCompId = compId.toString().padStart(3, "0");
 
-      // Create a new Companion document with optional Profile field
+      // Create a new Companion document
       const newCompanionData = {
         CompawnionUser: {
           accountCreate: {
