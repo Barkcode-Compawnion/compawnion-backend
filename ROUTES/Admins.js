@@ -147,13 +147,26 @@ module.exports = function (db, storage) {
     }
 
     try {
-      // Check if the username already exists
+      // Check for duplicate username
       const existingUserSnapshot = await db
         .collection("Admins")
-        .where("Username", "==", Username)
+        .where("aStaffInfo.Username", "==", Username)
         .get();
+
       if (!existingUserSnapshot.empty) {
+        console.log(`Duplicate username detected: ${Username}`);
         return res.status(400).json({ message: "Username already exists." });
+      }
+
+      // Check for duplicate email
+      const existingEmailSnapshot = await db
+        .collection("Admins")
+        .where("aStaffInfo.Email", "==", Email)
+        .get();
+
+      if (!existingEmailSnapshot.empty) {
+        console.log(`Duplicate email detected: ${Email}`);
+        return res.status(400).json({ message: "Email already in use." });
       }
 
       // Call to get the next Admin ID
