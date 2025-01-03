@@ -412,6 +412,18 @@ module.exports = function (db, storage) {
       const oldEmail = userDoc.data().aStaffInfo.Email; // Current email in the database
       const newEmail = updatedUser.aStaffInfo.Email; // New email from the request body
 
+      // Check if the new email is already taken by another admin
+      if (newEmail && newEmail !== oldEmail) {
+        const emailCheckSnapshot = await db
+          .collection("Admins")
+          .where("aStaffInfo.Email", "==", newEmail)
+          .get();
+
+        if (!emailCheckSnapshot.empty) {
+          return res.status(400).json({ message: "Email already exists." });
+        }
+      }
+
       // Handle profile picture update if provided
       const { Picture: Image } = req.body;
       let Picture = null;
@@ -434,14 +446,20 @@ module.exports = function (db, storage) {
         }
       }
 
-      updatedUser.aStaffInfo.Picture = Picture || userDoc.data().aStaffInfo.Picture;
+      updatedUser.aStaffInfo.Picture =
+        Picture || userDoc.data().aStaffInfo.Picture;
 
       // Update admin details in Firestore
       await userRef.update(updatedUser);
 
       // If the email is changed, send a notification
       if (oldEmail !== newEmail) {
-        await sendEmailUpdateNotification(oldEmail, newEmail, userId, updatedUser.aStaffInfo.Name);
+        await sendEmailUpdateNotification(
+          oldEmail,
+          newEmail,
+          userId,
+          updatedUser.aStaffInfo.Name
+        );
       }
 
       res.json({ message: "Admin updated successfully" });
@@ -452,7 +470,12 @@ module.exports = function (db, storage) {
   });
 
   // Function to send email update notifications
-  async function sendEmailUpdateNotification(oldEmail, newEmail, adminId, name) {
+  async function sendEmailUpdateNotification(
+    oldEmail,
+    newEmail,
+    adminId,
+    name
+  ) {
     const mailOptions = {
       from: "barkcodecompawnion@gmail.com",
       to: [oldEmail, newEmail],
@@ -478,6 +501,7 @@ module.exports = function (db, storage) {
       throw error;
     }
   }
+
 
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
