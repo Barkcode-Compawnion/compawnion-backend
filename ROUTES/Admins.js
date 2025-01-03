@@ -390,22 +390,26 @@ module.exports = function (db, storage) {
       const userRef = db.collection("Admins").doc(userId);
       const updatedUser = req.body;
 
-      // !!!!!!!!!!!!!!!!!!!!! UNTESTED CODE !!!!!!!!!!!!!!!!!!!!!
-      // Get Image from the request body
-      const { Picture: Image } = req.body;
+      // Fetch existing admin details
+      const userDoc = await userRef.get();
+      if (!userDoc.exists) {
+        return res.status(404).json({ message: "Admin not found" });
+      }
 
-      // Translate Image into blob
+      const oldEmail = userDoc.data().aStaffInfo.Email; // Current email in the database
+      const newEmail = updatedUser.aStaffInfo.Email; // New email from the request body
+
+      // Handle profile picture update if provided
+      const { Picture: Image } = req.body;
       let Picture = null;
       if (Image) {
         try {
-          // Create a buffer from the base64 string
           const type = Image.match(
             /data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/
           )[1];
           const data = Image.replace(/^data:image\/\w+;base64,/, "");
           const buffer = Buffer.from(data, "base64");
 
-          // Upload the image to Firebase Storage
           const file = storage.file(`Admins/${userId}.${type.split("/")[1]}`);
           await file.save(buffer, { contentType: type });
           Picture = `https://compawnion-backend.onrender.com/media/Admins/${userId}.${
@@ -416,15 +420,52 @@ module.exports = function (db, storage) {
           return res.status(500).json({ message: "Failed to upload image." });
         }
       }
-      updatedUser.aStaffInfo.Picture = Picture;
-      // !!!!!!!!!!!!!!!!!!!!! UNTESTED CODE !!!!!!!!!!!!!!!!!!!!!
 
+      updatedUser.aStaffInfo.Picture = Picture || userDoc.data().aStaffInfo.Picture;
+
+      // Update admin details in Firestore
       await userRef.update(updatedUser);
+
+      // If the email is changed, send a notification
+      if (oldEmail !== newEmail) {
+        await sendEmailUpdateNotification(oldEmail, newEmail, userId, updatedUser.aStaffInfo.Name);
+      }
+
       res.json({ message: "Admin updated successfully" });
     } catch (error) {
+      console.error("Error updating Admin:", error);
       res.status(500).json({ message: "Error updating Admin", error });
     }
   });
+
+  // Function to send email update notifications
+  async function sendEmailUpdateNotification(oldEmail, newEmail, adminId, name) {
+    const mailOptions = {
+      from: "barkcodecompawnion@gmail.com",
+      to: [oldEmail, newEmail],
+      subject: "Email Address Updated",
+      html: `
+        <h1>Email Address Updated</h1>
+        <p>Dear ${name},</p>
+        <p>Your email address associated with Admin ID <strong>${adminId}</strong> has been updated.</p>
+        <ul>
+          <li><strong>Old Email:</strong> ${oldEmail}</li>
+          <li><strong>New Email:</strong> ${newEmail}</li>
+        </ul>
+        <p>If you did not make this change, please contact support immediately.</p>
+        <p>Thank you for keeping your information up-to-date!</p>
+      `,
+    };
+
+    try {
+      await transporter.sendMail(mailOptions);
+      console.log("Email update notification sent successfully.");
+    } catch (error) {
+      console.error("Error sending email update notification:", error);
+      throw error;
+    }
+  }
+
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Delete Admin
