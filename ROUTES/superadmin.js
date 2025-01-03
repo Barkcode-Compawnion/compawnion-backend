@@ -38,6 +38,5 @@ module.exports = function (db, storage) {
       res.status(500).json({ message: "Failed to log in.", error });
     }
   });
-
   return Superadmins;
 };

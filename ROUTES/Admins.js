@@ -485,18 +485,30 @@ module.exports = function (db, storage) {
 
   Admins.delete("/:id", async (req, res) => {
     try {
+      const { superadminPassword } = req.body; // Superadmin password from request body
       const userId = req.params.id;
       const userRef = db.collection("Admins").doc(userId);
 
-      // Delete the image from Firebase Storage
-      const doc = await userRef.get();
-      const { Picture } = doc.data().aStaffInfo;
-      if (Picture) {
-        const filename = Picture.split("/").slice(-1)[0];
-        const file = storage.file(`Admins/${filename}`);
-        await file.delete();
+      // Fetch the superadmin document from Firestore
+      const superadminDoc = await db
+        .collection("superadmin")
+        .doc("onlysuperadmin")
+        .get();
+
+      if (!superadminDoc.exists) {
+        return res.status(404).json({ message: "Superadmin not found." });
       }
 
+      const { superadminpassword } = superadminDoc.data();
+
+      // Compare the provided password with the stored password
+      if (superadminPassword !== superadminpassword) {
+        return res
+          .status(401)
+          .json({ message: "Invalid superadmin password." });
+      }
+
+      // Delete the Admin document
       await userRef.delete();
       res.json({ message: "Admin deleted successfully" });
     } catch (error) {
