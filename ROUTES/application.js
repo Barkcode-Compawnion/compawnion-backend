@@ -482,6 +482,7 @@ module.exports = function (db) {
           veterinarian,
         },
         status: "Pending",
+        dateOfSubmission: new Date().toISOString(),
       };
 
       // Add the new application under "PENDING"
