@@ -440,6 +440,17 @@ module.exports = function (db) {
       const appId = await getNextAppId();
       const formattedAppId = appId.toString().padStart(3, "0");
 
+      // Format the date
+      const dateFormatter = new Intl.DateTimeFormat("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
+      const formattedDate = dateFormatter.format(new Date());
+
       const newApplication = {
         termsAndCondission,
         paymentAgreement,
@@ -482,7 +493,7 @@ module.exports = function (db) {
           veterinarian,
         },
         status: "Pending",
-        dateOfSubmission: new Date().toISOString(),
+        dateOfSubmission: formattedDate, // Add formatted date of submission
       };
 
       // Add the new application under "PENDING"
@@ -526,6 +537,7 @@ module.exports = function (db) {
         .json({ message: "Error adding application", error: error.message });
     }
   });
+
 
   application.post("/:id/onlineApprove", async (req, res) => {
     const appId = req.params.id;
