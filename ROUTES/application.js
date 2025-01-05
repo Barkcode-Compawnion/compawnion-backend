@@ -448,6 +448,7 @@ module.exports = function (db) {
         hour: "2-digit",
         minute: "2-digit",
         hour12: false,
+        timeZone: "Asia/Manila",
       });
       const formattedDate = dateFormatter.format(new Date());
 
