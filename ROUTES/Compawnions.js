@@ -295,6 +295,22 @@ module.exports = function (db, storage) {
     res.json({ message: "Logout successful." });
   });
 
+  Compawnions.post("/authenticate", async (req, res) => {
+    const { authToken } = req.body;
+    if (!authToken) {
+      res.json({ message: "Pleace Provide Authentication Token."});
+      return;
+    };
+
+    try {
+      jwt.verify(authToken, secretKey, {});
+
+      res.send({ message: "Valid Session.", valid: true });
+    } catch (error) {
+      res.send({ message: "In Session.", valid: false });
+    };
+  });
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
