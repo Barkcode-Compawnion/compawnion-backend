@@ -196,7 +196,7 @@ module.exports = function (db) {
     }
   });
 
-  pdfcontract.get("contractInformation/:id", async (req, res) => {
+  pdfcontract.get("/contractInformation/:id", async (req, res) => {
     const { id } = req.params;
     if (!id) {
       return res.status(400).json({ message: "Application ID is required" });
