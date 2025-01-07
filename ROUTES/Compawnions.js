@@ -501,7 +501,7 @@ Compawnions.get("/accountget/:compawnionId", async (req, res) => {
       return res.status(404).json({ message: "Account creation data not found." });
     }
 
-    const { FirstName, LastName, Username, Email, Phonenumber } = accountCreate;
+    const { FirstName, LastName, Username, Email, PhoneNumber } = accountCreate;
 
     res.json({
       message: "Companion account retrieved successfully.",
@@ -511,7 +511,7 @@ Compawnions.get("/accountget/:compawnionId", async (req, res) => {
         LastName,
         Username,
         Email,
-        Phonenumber,
+        PhoneNumber,
       },
     });
   } catch (error) {
