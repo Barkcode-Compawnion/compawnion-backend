@@ -815,45 +815,48 @@ module.exports = function (db, storage) {
 
   // Update Companion's account information, including Profile
   // Update Companion's account information, including Profile
-  Compawnions.put("/accountUpdate/:companionId", async (req, res) => {
-    try {
-      const companionId = req.params.companionId;
-      const { accountCreate } = req.body; // Expecting accountCreate data to be updated
+Compawnions.put("/accountUpdate/:companionId", async (req, res) => {
+  try {
+    const companionId = req.params.companionId;
+    const { firstName, lastName, username, email, phoneNumber } = req.body; // Expecting fields to be updated
 
-      if (!accountCreate) {
-        return res
-          .status(400)
-          .json({ message: "accountCreate data is required." });
-      }
+    // Reference to the specific document in the Compawnions collection
+    const userRef = db.collection("Compawnions").doc(companionId);
 
-      // Check if the new password is provided and hash it
-      if (accountCreate.Password) {
-        accountCreate.Password = await bcrypt.hash(accountCreate.Password, 10);
-      }
-
-      // Reference to the specific document in the Compawnions collection
-      const userRef = db.collection("Compawnions").doc(companionId);
-
-      // Get the current document data to merge changes
-      const userDoc = await userRef.get();
-      if (!userDoc.exists) {
-        return res.status(404).json({ message: "Companion not found." });
-      }
-
-      // Update the accountCreate subfield with the new data, including Profile
-      await userRef.update({
-        "CompawnionUser.accountCreate": {
-          ...userDoc.data().CompawnionUser.accountCreate,
-          ...accountCreate, // Merge new data with existing fields
-        },
-      });
-
-      res.json({ message: "Companion account updated successfully." });
-    } catch (error) {
-      console.error("Error updating companion account:", error);
-      res.status(500).json({ message: "Error updating companion account." });
+    // Get the current document data to merge changes
+    const userDoc = await userRef.get();
+    if (!userDoc.exists) {
+      return res.status(404).json({ message: "Companion not found." });
     }
-  });
+
+    // Retrieve existing data from CompawnionUser.accountCreate
+    const existingData = userDoc.data().CompawnionUser.accountCreate || {};
+
+    // Combine first and last name into a single "Name" field (optional)
+    const fullName = (firstName && lastName) ? `${firstName} ${lastName}` : existingData.name;
+
+    // Prepare the updated accountCreate object, only updating fields provided in the request
+    const updatedAccountCreate = {
+      name: fullName || existingData.name,
+      firstName: firstName || existingData.firstName,
+      lastName: lastName || existingData.lastName,
+      username: username || existingData.username,
+      email: email || existingData.email,
+      phoneNumber: phoneNumber || existingData.phoneNumber,
+    };
+
+    // Update the accountCreate subfield with the new data
+    await userRef.update({
+      "CompawnionUser.accountCreate": updatedAccountCreate,
+    });
+
+    res.json({ message: "Companion account updated successfully." });
+  } catch (error) {
+    console.error("Error updating companion account:", error);
+    res.status(500).json({ message: "Error updating companion account." });
+  }
+});
+
 
   Compawnions.put("/changePassword/:companionId", async (req, res) => {
     try {
