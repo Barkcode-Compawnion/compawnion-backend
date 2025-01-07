@@ -374,12 +374,24 @@ module.exports = function (db) {
   application.get("/:id", async (req, res) => {
     const appId = req.params.id;
     try {
-      const appRef = db
+      // Check in PENDING applications
+      let appRef = db
         .collection("Applications")
         .doc("PENDING")
         .collection("Applications")
         .doc(appId);
-      const appDoc = await appRef.get();
+      let appDoc = await appRef.get();
+
+      // If not found in PENDING, check in REJECTED applications
+      if (!appDoc.exists) {
+        appRef = db
+          .collection("Applications")
+          .doc("REJECT")
+          .collection("Applications")
+          .doc(appId);
+        appDoc = await appRef.get();
+      }
+
       if (!appDoc.exists)
         return res.status(404).json({ message: "Application not found" });
 

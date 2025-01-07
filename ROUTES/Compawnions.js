@@ -481,6 +481,45 @@ module.exports = function (db, storage) {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+Compawnions.get("/accountget/:compawnionId", async (req, res) => {
+  try {
+    const companionId = req.params.compawnionId;
+    const userRef = db.collection("Compawnions").doc(companionId);
+    const doc = await userRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({ message: "Companion not found." });
+    }
+
+    const companionData = doc.data();
+    console.log(companionData);  // Log the entire data for debugging
+
+    // Access the nested `accountCreate` object
+    const accountCreate = companionData.CompawnionUser?.accountCreate;
+
+    if (!accountCreate) {
+      return res.status(404).json({ message: "Account creation data not found." });
+    }
+
+    const { FirstName, LastName, Username, Email, PhoneNumber } = accountCreate;
+
+    res.json({
+      message: "Companion account retrieved successfully.",
+      data: {
+        id: doc.id,
+        FirstName,
+        LastName,
+        Username,
+        Email,
+        PhoneNumber,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error retrieving Companion account." });
+  }
+});
+
+  
   // Read All Companions
   Compawnions.get("/", async (req, res) => {
     try {
@@ -734,6 +773,44 @@ module.exports = function (db, storage) {
       console.error("Error retrieving TrustedVet details:", error);
       res.status(500).json({
         message: "Failed to retrieve TrustedVet details.",
+        error: error.message,
+      });
+    }
+  });
+
+  // Get All CompanionSchedules for today
+  Compawnions.get("/CompawnionSched/today", async (req, res) => {
+    try {
+      // Get the current date
+      const today = new Date();
+      const todayFormatted = today.toISOString().split("T")[0];
+
+      // Query the Compawnions collection
+      const snapshot = await db.collection("Compawnions").get();
+
+      // Filter schedules for today
+      const schedules = [];
+      snapshot.forEach((doc) => {
+        const compawnionData = doc.data().CompawnionUser;
+        const compawnionSched = compawnionData.CompawnionSched || [];
+        compawnionSched.forEach((sched) => {
+          if (sched.CSDate === todayFormatted) {
+            schedules.push({
+              companionId: doc.id,
+              ...sched,
+            });
+          }
+        });
+      });
+
+      res.json({
+        message: "Today's schedules retrieved successfully.",
+        data: schedules,
+      });
+    } catch (error) {
+      console.error("Error retrieving today's schedules:", error);
+      res.status(500).json({
+        message: "Failed to retrieve today's schedules.",
         error: error.message,
       });
     }
@@ -1158,6 +1235,51 @@ Compawnions.put("/accountUpdate/:companionId", async (req, res) => {
       });
     }
   });  
+
+    Compawnions.delete(
+    "/deleteMedSched/:companionId/:index",
+    async (req, res) => {
+      const { companionId, index } = req.params;
+      const indexNumber = parseInt(index, 10);
+
+      if (isNaN(indexNumber)) {
+        return res.status(400).json({
+          message: "Invalid index provided.",
+        });
+      }
+
+      try {
+        const userRef = db.collection("Compawnions").doc(companionId);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+          return res.status(404).json({ message: "Companion not found." });
+        }
+
+        let medSchedArray = userDoc.data().CompawnionUser.MedSched || [];
+
+        if (indexNumber < 0 || indexNumber >= medSchedArray.length) {
+          return res.status(400).json({
+            message: "Index out of bounds.",
+          });
+        }
+
+        medSchedArray.splice(indexNumber, 1); // Remove the item at the specified index.
+
+        await userRef.update({
+          "CompawnionUser.MedSched": medSchedArray,
+        });
+
+        res.json({ message: "MedSched deleted successfully." });
+      } catch (error) {
+        console.error("Error deleting MedSched:", error);
+        res.status(500).json({
+          message: "Failed to delete MedSched.",
+          error: error.message,
+        });
+      }
+    }
+  );
 
   Compawnions.delete(
     "/deleteTrustedVet/:companionId/:index",
