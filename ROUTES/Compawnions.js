@@ -739,6 +739,37 @@ module.exports = function (db, storage) {
     }
   });
 
+  // Get All CompanionSchedules for today
+  Compawnions.get("/CompawnionSched/today", async (req, res) => {
+    try {
+      // Get the current date
+      const today = new Date();
+      const todayFormatted = today.toISOString().split("T")[0];
+
+      // Query the Compawnions collection for today's schedules
+      const snapshot = await db
+        .collection("Compawnions")
+        .where("CompawnionUser.CompawnionSched.CSDate", "==", todayFormatted)
+        .get();
+
+      const schedules = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      res.json({
+        message: "Today's schedules retrieved successfully.",
+        data: schedules,
+      });
+    } catch (error) {
+      console.error("Error retrieving today's schedules:", error);
+      res.status(500).json({
+        message: "Failed to retrieve today's schedules.",
+        error: error.message,
+      });
+    }
+  });
+
   // Route to get CompawnionSched details
   Compawnions.get("/CompawnionSched/:companionId", async (req, res) => {
     const { companionId } = req.params;
@@ -764,37 +795,6 @@ module.exports = function (db, storage) {
       console.error("Error retrieving CompawnionSched details:", error);
       res.status(500).json({
         message: "Failed to retrieve CompawnionSched details.",
-        error: error.message,
-      });
-    }
-  });
-
-  // Get All CompanionSchedules for today
-  Compawnions.get("/todaySchedules", async (req, res) => {
-    try {
-      // Get the current date
-      const today = new Date();
-      const todayFormatted = today.toISOString().split("T")[0];
-
-      // Query the Compawnions collection for today's schedules
-      const snapshot = await db
-        .collection("Compawnions")
-        .where("CompawnionUser.CompawnionSched.CSDate", "==", todayFormatted)
-        .get();
-
-      const schedules = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-
-      res.json({
-        message: "Today's schedules retrieved successfully.",
-        data: schedules,
-      });
-    } catch (error) {
-      console.error("Error retrieving today's schedules:", error);
-      res.status(500).json({
-        message: "Failed to retrieve today's schedules.",
         error: error.message,
       });
     }
