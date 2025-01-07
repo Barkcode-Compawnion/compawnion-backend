@@ -111,5 +111,53 @@ module.exports = function (db, storage) {
     }
   });
 
+  // Endpoint to add archive an adopted animal
+  // Endpoint to archive an adopted animal
+  adoptedAnimals.post("/archive/:appPetID/:petId", async (req, res) => {
+    const { appPetID, petId } = req.params;
+
+    try {
+      // Fetch the AdoptedAnimals document by appPetID
+      const adoptedAnimalRef = db.collection("AdoptedAnimals").doc(appPetID);
+      const doc = await adoptedAnimalRef.get();
+
+      if (!doc.exists) {
+        return res.status(404).json({ message: "Adopted animal not found" });
+      }
+
+      // Fetch the specific pet by its petId field within the appPetID document
+      const petData = doc.data()[petId];
+
+      if (!petData) {
+        return res
+          .status(404)
+          .json({ message: "Pet not found in this adoption" });
+      }
+
+      // Add pet data to PET_ARCHIVE collection
+      await db.collection("PET_ARCHIVE").doc(petId).set({
+        ...petData,
+        status: "Archived",
+        archiveDate: new Date().toISOString(),
+      });
+
+      // Remove the pet from the AdoptedAnimals document
+      const updatedData = doc.data();
+      delete updatedData[petId];
+
+      if (Object.keys(updatedData).length === 0) {
+        // If no pets remain, delete the entire document
+        await adoptedAnimalRef.delete();
+      } else {
+        // Otherwise, update the document with the remaining pets
+        await adoptedAnimalRef.set(updatedData);
+      }
+
+      res.json({ message: "Adopted animal archived successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Error archiving adopted animal", error });
+    }
+  });
+
   return adoptedAnimals;
 };
