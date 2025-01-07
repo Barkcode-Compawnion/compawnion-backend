@@ -72,10 +72,8 @@ module.exports = function (db, storage) {
           <li><strong>Name:</strong> ${name}</li>
           <li><strong>Username:</strong> ${username}</li>
           <li><strong>Email:</strong> ${email}</li>
-          <li><strong>Initial Password:</strong> ${password}</li>
         </ul>
-        <p>Please keep your password safe.</p>
-        <p>We look forward to working with you!</p>
+        <p>Thank you for choosing to be a COMPAWNION!</p>
       `,
     };
 
