@@ -196,5 +196,103 @@ module.exports = function (db) {
     }
   });
 
+  pdfcontract.get("contractInformation/:id", async (req, res) => {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: "Application ID is required" });
+    }
+
+    try {
+      let appDoc = await db
+        .collection("Applications")
+        .doc("PENDING")
+        .collection("Applications")
+        .doc(id)
+        .get();
+
+      // If not found in PENDING, check in APPROVED
+      if (!appDoc.exists) {
+        appDoc = await db
+          .collection("Applications")
+          .doc("APPROVED")
+          .collection("Applications")
+          .doc(id)
+          .get();
+
+        // If not found in either PENDING or APPROVED
+        if (!appDoc.exists) {
+          return res
+            .status(404)
+            .json({ message: "Application does not exist" });
+        }
+      }
+
+      const appData = appDoc.data();
+      const { applicant, petId } = appData; // Change petData.id to petId here
+
+      if (!petId) {
+        return res
+          .status(404)
+          .json({ message: "Pet ID not found in application" });
+      }
+
+      const rescuedAnimalDoc = await db
+        .collection("PENDINGPETS")
+        .doc(petId) // Use petId directly
+        .get();
+
+      if (!rescuedAnimalDoc.exists) {
+        return res
+          .status(404)
+          .json({ message: "Pet not found in RescuedAnimals" });
+      }
+
+      const rescuedAnimalData = rescuedAnimalDoc.data();
+      const { personal, background } = rescuedAnimalData;
+
+      if (!personal || !personal.name || !personal.breed) {
+        return res
+          .status(404)
+          .json({ message: "Incomplete pet details in RescuedAnimals" });
+      }
+
+      const currentDate = new Date().toLocaleDateString();
+
+      // Verify background data fields before using them
+      const medicalHistory = background.medicalHistory || [];
+      const vaccinationHistory = background.vaccination || [];
+
+      const petInfo = {
+        name: personal.name,
+        type: personal.type || "N/A",
+        breed: personal.breed,
+        age: personal.age
+          ? `${personal.age.year || 0} years ${personal.age.month || 0} months`
+          : "N/A",
+        size: background.size || "N/A",
+        weight: background.weight || "N/A",
+        rescueDate: background.rescueDate || "N/A",
+        rescueStory: background.rescueStory || "N/A",
+        medicalHistory: medicalHistory.map((record) => ({
+          procedure: record.procedure || "N/A",
+          date: record.date || "N/A",
+          notes: record.notes || "N/A",
+        })),
+        vaccinationHistory: vaccinationHistory.map((vaccine) => ({
+          name: vaccine.name || "N/A",
+          date: vaccine.date || "N/A",
+          expiry: vaccine.expiry || "N/A",
+        })),
+      };
+
+      res.json({ applicant, petInfo });
+    } catch (error) {
+      console.error("Error fetching contract information:", error.message);
+      console.error("Stack Trace:", error.stack); // Logs the error stack trace
+      res
+        .status(500)
+        .json({ message: "Failed to fetch contract information", error: error.message });
+    };
+  });
   return pdfcontract;
 };
