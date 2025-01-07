@@ -121,12 +121,9 @@ module.exports = function (db, storage) {
 
       if (!existingPetIdSnapshot.empty) {
         console.log(`Duplicate appPetID detected: ${appPetID}`);
-        return res
-          .status(400)
-          .json({
-            message:
-              "This appPetID is already associated with another account.",
-          });
+        return res.status(400).json({
+          message: "This appPetID is already associated with another account.",
+        });
       }
 
       // Check for duplicate username
@@ -298,9 +295,9 @@ module.exports = function (db, storage) {
   Compawnions.post("/authenticate", async (req, res) => {
     const { authToken } = req.body;
     if (!authToken) {
-      res.json({ message: "Pleace Provide Authentication Token."});
+      res.json({ message: "Pleace Provide Authentication Token." });
       return;
-    };
+    }
 
     try {
       jwt.verify(authToken, secretKey, {});
@@ -308,7 +305,7 @@ module.exports = function (db, storage) {
       res.send({ message: "Valid Session.", valid: true });
     } catch (error) {
       res.send({ message: "In Session.", valid: false });
-    };
+    }
   });
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -689,6 +686,60 @@ module.exports = function (db, storage) {
     }
   });
 
+  Compawnions.put("/changePassword/:companionId", async (req, res) => {
+    try {
+      const companionId = req.params.companionId;
+      const { username, currentPassword, newPassword, confirmNewPassword } =
+        req.body;
+
+      // Validate inputs
+      if (!currentPassword || !newPassword || !confirmNewPassword) {
+        return res
+          .status(400)
+          .json({ message: "All password fields are required." });
+      }
+
+      if (newPassword !== confirmNewPassword) {
+        return res.status(400).json({ message: "New passwords do not match." });
+      }
+
+      // Reference to the specific document in the Compawnions collection
+      const userRef = db.collection("Compawnions").doc(companionId);
+      const userDoc = await userRef.get();
+
+      if (!userDoc.exists) {
+        return res.status(404).json({ message: "Companion not found." });
+      }
+
+      const userData = userDoc.data();
+      const storedPassword = userData?.CompawnionUser?.accountCreate?.Password;
+
+      // Check if current password matches
+      const isPasswordCorrect = await bcrypt.compare(
+        currentPassword,
+        storedPassword
+      );
+      if (!isPasswordCorrect) {
+        return res
+          .status(401)
+          .json({ message: "Current password is incorrect." });
+      }
+
+      // Hash the new password
+      const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update the password in the database
+      await userRef.update({
+        "CompawnionUser.accountCreate.Password": hashedNewPassword,
+      });
+
+      res.json({ message: "Password changed successfully." });
+    } catch (error) {
+      console.error("Error changing password:", error);
+      res.status(500).json({ message: "Error changing password." });
+    }
+  });
+
   Compawnions.put("/updateMedSched/:companionId/:index", async (req, res) => {
     const { companionId, index } = req.params;
     const indexNumber = parseInt(index, 10);
@@ -699,60 +750,6 @@ module.exports = function (db, storage) {
         message: "Invalid index provided.",
       });
     }
-
-    Compawnions.put("/changePassword/:companionId", async (req, res) => {
-      try {
-        const companionId = req.params.companionId;
-        const { username, currentPassword, newPassword, confirmNewPassword } =
-          req.body;
-
-        // Validate inputs of password
-        if (!currentPassword || !newPassword || !confirmNewPassword) {
-          return res
-            .status(400)
-            .json({ message: "All password fields are required." });
-        }
-
-        if (newPassword !== confirmNewPassword) {
-          return res.status(400).json({ message: "New passwords do not match." });
-        }
-
-        // Reference to the specific document in the Compawnions collection
-        const userRef = db.collection("Compawnions").doc(companionId);
-        const userDoc = await userRef.get();
-
-        if (!userDoc.exists) {
-          return res.status(404).json({ message: "Companion not found." });
-        }
-
-        const userData = userDoc.data();
-        const storedPassword = userData?.CompawnionUser?.accountCreate?.Password;
-
-        // Check if current password matches
-        const isPasswordCorrect = await bcrypt.compare(
-          currentPassword,
-          storedPassword
-        );
-        if (!isPasswordCorrect) {
-          return res
-            .status(401)
-            .json({ message: "Current password is incorrect." });
-        }
-
-        // Hash the new password
-        const hashedNewPassword = await bcrypt.hash(newPassword, 10);
-
-        // Update the password in the database
-        await userRef.update({
-          "CompawnionUser.accountCreate.Password": hashedNewPassword,
-        });
-
-        res.json({ message: "Password changed successfully." });
-      } catch (error) {
-        console.error("Error changing password:", error);
-        res.status(500).json({ message: "Error changing password." });
-      }
-    });
 
     if (!MedSched) {
       return res.status(400).json({
