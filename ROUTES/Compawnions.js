@@ -706,7 +706,7 @@ module.exports = function (db, storage) {
         const { username, currentPassword, newPassword, confirmNewPassword } =
           req.body;
 
-        // Validate inputs
+        // Validate inputs of password
         if (!currentPassword || !newPassword || !confirmNewPassword) {
           return res
             .status(400)
