@@ -307,6 +307,116 @@ module.exports = function (db, storage) {
     }
   });
 
+    Compawnions.post("/forgotPassword", async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      // Validate input
+      if (!email) {
+        return res.status(400).json({ message: "Email is required." });
+      }
+
+      // Check if the email exists in the database
+      const snapshot = await db
+        .collection("Compawnions")
+        .where("CompawnionUser.accountCreate.Email", "==", email)
+        .get();
+
+      if (snapshot.empty) {
+        return res.status(404).json({ message: "Email not found." });
+      }
+
+      // Generate a verification code (6-digit)
+      const verificationCode = Math.floor(100000 + Math.random() * 900000);
+
+      // Save the verification code in the database for the user
+      const docId = snapshot.docs[0].id;
+      await db
+        .collection("Compawnions")
+        .doc(docId)
+        .update({
+          "CompawnionUser.resetCode": verificationCode,
+          "CompawnionUser.resetCodeExpires": Date.now() + 15 * 60 * 1000, // 15-minute expiration
+        });
+
+      // Send the verification code via email
+      await sendVerificationEmail(email, verificationCode);
+
+      res.json({ message: "Verification code sent to email." });
+    } catch (error) {
+      console.error("Error in resetPassword:", error);
+      res.status(500).json({ message: "Error sending reset password email." });
+    }
+  });
+
+  async function sendVerificationEmail(email, verificationCode) {
+    const mailOptions = {
+      from: "barkcodecompawnion@gmail.com", // Replace with your email
+      to: email,
+      subject: "Reset Password Verification Code",
+      html: `
+        <h1>Reset Your Password</h1>
+        <p>We received a request to reset your password. Use the verification code below to proceed:</p>
+        <h2>${verificationCode}</h2>
+        <p>This code is valid for 15 minutes.</p>
+        <p>If you did not request a password reset, please ignore this email.</p>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+  }
+
+  Compawnions.post("/forgotPassword/verify", async (req, res) => {
+    try {
+      const { resetCode } = req.body;
+
+      // Validate input
+      if (!resetCode) {
+        return res.status(400).json({ message: "Reset code is required." });
+      }
+
+      // Convert entered reset code to a number
+      const enteredResetCode = Number(resetCode);
+
+      // Fetch user by reset code from the database
+      const snapshot = await db
+        .collection("Compawnions")
+        .where("CompawnionUser.resetCode", "==", enteredResetCode)
+        .get();
+
+      if (snapshot.empty) {
+        return res.status(404).json({ message: "Invalid verification code." });
+      }
+
+      const docId = snapshot.docs[0].id;
+      const userDoc = snapshot.docs[0].data();
+      const storedResetCode = userDoc.CompawnionUser.resetCode; // Stored as a number
+
+      // Debugging: Log the stored and entered reset codes
+      console.log("Stored Reset Code:", storedResetCode);
+      console.log("Entered Reset Code:", enteredResetCode);
+
+      // Check if the reset codes match
+      if (storedResetCode !== enteredResetCode) {
+        return res.status(404).json({ message: "Invalid verification code." });
+      }
+
+      const resetCodeExpires = userDoc.CompawnionUser.resetCodeExpires;
+
+      // Check if the reset code has expired
+      if (Date.now() > resetCodeExpires) {
+        return res
+          .status(400)
+          .json({ message: "Verification code has expired." });
+      }
+
+      res.json({ message: "Verification code is valid." });
+    } catch (error) {
+      console.error("Error in resetPassword/verify:", error);
+      res.status(500).json({ message: "Error verifying the reset code." });
+    }
+  });
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
