@@ -818,7 +818,7 @@ module.exports = function (db, storage) {
 Compawnions.put("/accountUpdate/:companionId", async (req, res) => {
   try {
     const companionId = req.params.companionId;
-    const { firstName, lastName, username, email, phoneNumber } = req.body; // Expecting fields to be updated
+    const { FirstName, LastName, Username, Email, PhoneNumber } = req.body; // Expecting fields to be updated
 
     // Reference to the specific document in the Compawnions collection
     const userRef = db.collection("Compawnions").doc(companionId);
@@ -833,16 +833,16 @@ Compawnions.put("/accountUpdate/:companionId", async (req, res) => {
     const existingData = userDoc.data().CompawnionUser.accountCreate || {};
 
     // Combine first and last name into a single "Name" field (optional)
-    const fullName = (firstName && lastName) ? `${firstName} ${lastName}` : existingData.name;
+    const FullName = (FirstName && LastName) ? `${FirstName} ${LastName}` : existingData.name;
 
     // Prepare the updated accountCreate object, only updating fields provided in the request
     const updatedAccountCreate = {
-      name: fullName || existingData.name,
-      firstName: firstName || existingData.firstName,
-      lastName: lastName || existingData.lastName,
-      username: username || existingData.username,
-      email: email || existingData.email,
-      phoneNumber: phoneNumber || existingData.phoneNumber,
+      Name: FullName || existingData.Name,
+      FirstName: FirstName || existingData.FirstName,
+      LastName: LastName || existingData.LastName,
+      Username: Username || existingData.Username,
+      Email: Email || existingData.Email,
+      PhoneNumber: PhoneNumber || existingData.PhoneNumber,
     };
 
     // Update the accountCreate subfield with the new data
