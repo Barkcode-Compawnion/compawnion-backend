@@ -266,6 +266,108 @@ module.exports = function (db, storage) {
     }
   });
 
+  // archive route is over here
+  ra.post("/archived/:id", async (req, res) => {
+    const petId = req.params.id;
+
+    if (!petId) {
+      return res.status(400).json({ message: "Pet ID is required" });
+    }
+
+    try {
+      const rescuedRef = db.collection("RescuedAnimals").doc(petId);
+      const doc = await rescuedRef.get();
+
+      if (!doc.exists) {
+        return res
+          .status(404)
+          .json({ message: "Pet not found in RescuedAnimals" });
+      }
+
+      // Retrieve pet data
+      const petData = doc.data();
+
+      // Format archive date
+      const dateFormatter = new Intl.DateTimeFormat("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
+      const archiveDate = dateFormatter.format(new Date());
+
+      // Add pet data to PET_ARCHIVE collection
+      await db
+        .collection("PET_ARCHIVE")
+        .doc(petId)
+        .set({
+          ...petData,
+          archiveDate, // Add formatted archive date
+          status: "Archived",
+        });
+
+      // Delete the pet from RescuedAnimals after transfer
+      await rescuedRef.delete();
+
+      console.log(`Pet ${petId} successfully archived in PET_ARCHIVE.`);
+      res.json({ message: "Pet successfully archived in PET_ARCHIVE" });
+    } catch (error) {
+      console.error("Error archiving pet:", error);
+      res.status(500).json({
+        message: "An error occurred while archiving the pet",
+        error: error.message,
+      });
+    }
+  });
+
+  ra.post("/unarchived/:id", async (req, res) => {
+    const petId = req.params.id;
+
+    if (!petId) {
+      return res.status(400).json({ message: "Pet ID is required" });
+    }
+
+    try {
+      const archiveRef = db.collection("PET_ARCHIVE").doc(petId);
+      const doc = await archiveRef.get();
+
+      if (!doc.exists) {
+        return res
+          .status(404)
+          .json({ message: "Pet not found in PET_ARCHIVE" });
+      }
+
+      // Retrieve pet data
+      const petData = doc.data();
+
+      // Remove archive-specific fields before restoring
+      const { archiveDate, status, ...restoredPetData } = petData;
+
+      // Add pet data back to RescuedAnimals collection
+      await db
+        .collection("RescuedAnimals")
+        .doc(petId)
+        .set({
+          ...restoredPetData,
+          status: "Available for Adoption", // Update the status back to "Rescued"
+        });
+
+      // Delete the pet from PET_ARCHIVE after restoring
+      await archiveRef.delete();
+
+      console.log(`Pet ${petId} successfully restored to RescuedAnimals.`);
+      res.json({ message: "Pet successfully restored to RescuedAnimals" });
+    } catch (error) {
+      console.error("Error restoring pet:", error);
+      res.status(500).json({
+        message: "An error occurred while restoring the pet",
+        error: error.message,
+      });
+    }
+  });
+
   // Delete a pet
   // Request params: { id: String }
   // Success response: { message: String }
