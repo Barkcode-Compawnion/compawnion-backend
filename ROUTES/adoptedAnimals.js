@@ -74,5 +74,42 @@ module.exports = function (db, storage) {
     }
   });
 
+  // Endpoint to add a update an adopted animal
+  adoptedAnimals.put("/:appPetID/:petId", async (req, res) => {
+    const { appPetID, petId } = req.params;
+    const updatedData = req.body;
+
+    try {
+      // Fetch the AdoptedAnimals document by appPetID
+      const adoptedAnimalRef = db.collection("AdoptedAnimals").doc(appPetID);
+      const doc = await adoptedAnimalRef.get();
+
+      if (!doc.exists) {
+        return res.status(404).json({ message: "Adopted animal not found" });
+      }
+
+      // Fetch the specific pet by its petId field within the appPetID document
+      const petData = doc.data()[petId];
+
+      if (!petData) {
+        return res
+          .status(404)
+          .json({ message: "Pet not found in this adoption" });
+      }
+
+      // Update the specific pet data
+      const updatedPetData = { ...petData, ...updatedData };
+      await adoptedAnimalRef.update({
+        [petId]: updatedPetData,
+      });
+
+      res.json({ message: "Adopted animal updated successfully", petId, ...updatedPetData });
+    } catch (error) {
+      res
+        .status(500)
+        .json({ message: "Error updating adopted animal", error });
+    }
+  });
+
   return adoptedAnimals;
 };
