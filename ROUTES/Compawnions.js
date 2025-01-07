@@ -1081,13 +1081,24 @@ Compawnions.put("/accountUpdate/:companionId", async (req, res) => {
       const appPetID = userDoc.data().CompawnionUser.appPetID;
 
       if (appPetID) {
-        const adoptedAnimalRef = db.collection("AdoptedAnimals").doc(appPetID);
-        const adoptedAnimalDoc = await adoptedAnimalRef.get();
+        const adoptedAnimalsRef = db.collection("AdoptedAnimals").doc(appPetID);
+        const adoptedAnimalsDoc = await adoptedAnimalsRef.get();
 
-        if (adoptedAnimalDoc.exists) {
-          const archivedAnimalRef = db.collection("PET_ARCHIVE").doc(appPetID);
-          await archivedAnimalRef.set(adoptedAnimalDoc.data());
-          await adoptedAnimalRef.delete();
+        if (adoptedAnimalsDoc.exists) {
+          const adoptedAnimalsSnapshot = await db
+            .collection("AdoptedAnimals")
+            .where("appPetID", "==", appPetID)
+            .get();
+
+          const batch = db.batch();
+
+          adoptedAnimalsSnapshot.forEach((doc) => {
+            const archivedDocRef = db.collection("PET_ARCHIVE").doc(doc.id);
+            batch.set(archivedDocRef, doc.data());
+            batch.delete(doc.ref);
+          });
+
+          await batch.commit();
         }
       }
 
