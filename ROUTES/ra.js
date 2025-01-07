@@ -368,6 +368,16 @@ module.exports = function (db, storage) {
     }
   });
 
+  ra.get("/archived", async (req, res) => {
+    try {
+      const snapshot = await db.collection("PET_ARCHIVE").get();
+      const users = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ message: "Error retrieving archived Animals", error });
+    }
+  });
+
   // Delete a pet
   // Request params: { id: String }
   // Success response: { message: String }
