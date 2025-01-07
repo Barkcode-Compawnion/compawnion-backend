@@ -1069,90 +1069,95 @@ Compawnions.put("/accountUpdate/:companionId", async (req, res) => {
 
   // Delete Companion
   Compawnions.delete("/:id", async (req, res) => {
-    try {
-      const userId = req.params.id;
-      const userRef = db.collection("Compawnions").doc(userId);
-      const userDoc = await userRef.get();
+    const { adminUsername, adminPassword } = req.body; // Admin credentials from request body
+    const userId = req.params.id; // User (Companion) ID to delete
 
-      if (!userDoc.exists) {
+    if (!adminUsername || !adminPassword) {
+      return res
+        .status(400)
+        .json({ message: "Admin username and password are required." });
+    }
+
+    try {
+      // Verify admin credentials
+      const adminSnapshot = await db
+        .collection("Admins")
+        .where("aStaffInfo.Username", "==", adminUsername)
+        .limit(1)
+        .get();
+
+      if (adminSnapshot.empty) {
+        return res.status(404).json({ message: "Admin not found." });
+      }
+
+      const adminData = adminSnapshot.docs[0].data();
+      const isPasswordValid = await bcrypt.compare(
+        adminPassword,
+        adminData.aStaffInfo.Password
+      );
+
+      if (!isPasswordValid) {
+        return res.status(401).json({ message: "Invalid admin credentials." });
+      }
+
+      // Fetch the Companion (User) document
+      const companionRef = db.collection("Compawnions").doc(userId);
+      const companionDoc = await companionRef.get();
+
+      if (!companionDoc.exists) {
         return res.status(404).json({ message: "Companion not found." });
       }
 
-      const appPetID = userDoc.data().CompawnionUser.appPetID;
+      const companionData = companionDoc.data();
+      const appPetID = companionData.CompawnionUser.appPetID;
 
-      if (appPetID) {
-        const adoptedAnimalsRef = db.collection("AdoptedAnimals").doc(appPetID);
-        const adoptedAnimalsDoc = await adoptedAnimalsRef.get();
-
-        if (adoptedAnimalsDoc.exists) {
-          const adoptedAnimalsSnapshot = await db
-            .collection("AdoptedAnimals")
-            .where("appPetID", "==", appPetID)
-            .get();
-
-          const batch = db.batch();
-
-          adoptedAnimalsSnapshot.forEach((doc) => {
-            const archivedDocRef = db.collection("PET_ARCHIVE").doc(doc.id);
-            batch.set(archivedDocRef, doc.data());
-            batch.delete(doc.ref);
-          });
-
-          await batch.commit();
-        }
+      if (!appPetID) {
+        return res
+          .status(400)
+          .json({ message: "No associated pets to transfer." });
       }
 
-      await userRef.delete();
-      res.json({ message: "Companion and associated pets archived successfully." });
+      // Transfer associated pets back to the archive
+      const adoptedAnimalRef = db.collection("AdoptedAnimals").doc(appPetID);
+      const adoptedAnimalDoc = await adoptedAnimalRef.get();
+
+      if (!adoptedAnimalDoc.exists) {
+        return res.status(404).json({ message: "Adopted pet not found." });
+      }
+
+      const adoptedAnimalData = adoptedAnimalDoc.data();
+
+      for (const [petId, petData] of Object.entries(adoptedAnimalData)) {
+        const rescuedAnimalRef = db.collection("PET_ARCHIVE").doc(petId);
+        await rescuedAnimalRef.set(
+          { ...petData, status: "Archived" },
+          { merge: true }
+        );
+      }
+
+      // Delete the adopted animal record
+      await adoptedAnimalRef.delete();
+
+      // Delete the Companion account
+      await companionRef.delete();
+
+      // Log the deletion event
+      console.log(
+        `Admin ${adminUsername} deleted Companion account with ID: ${userId}.`
+      );
+
+      res.json({
+        message:
+          "Companion deleted successfully, and associated pets transferred back.",
+      });
     } catch (error) {
-      res.status(500).json({ message: "Error deleting Companion." });
+      console.error("Error deleting Companion:", error);
+      res.status(500).json({
+        message: "Error deleting Companion.",
+        error: error.message,
+      });
     }
-  });
-
-  Compawnions.delete(
-    "/deleteMedSched/:companionId/:index",
-    async (req, res) => {
-      const { companionId, index } = req.params;
-      const indexNumber = parseInt(index, 10);
-
-      if (isNaN(indexNumber)) {
-        return res.status(400).json({
-          message: "Invalid index provided.",
-        });
-      }
-
-      try {
-        const userRef = db.collection("Compawnions").doc(companionId);
-        const userDoc = await userRef.get();
-
-        if (!userDoc.exists) {
-          return res.status(404).json({ message: "Companion not found." });
-        }
-
-        let medSchedArray = userDoc.data().CompawnionUser.MedSched || [];
-
-        if (indexNumber < 0 || indexNumber >= medSchedArray.length) {
-          return res.status(400).json({
-            message: "Index out of bounds.",
-          });
-        }
-
-        medSchedArray.splice(indexNumber, 1); // Remove the item at the specified index.
-
-        await userRef.update({
-          "CompawnionUser.MedSched": medSchedArray,
-        });
-
-        res.json({ message: "MedSched deleted successfully." });
-      } catch (error) {
-        console.error("Error deleting MedSched:", error);
-        res.status(500).json({
-          message: "Failed to delete MedSched.",
-          error: error.message,
-        });
-      }
-    }
-  );
+  });  
 
   Compawnions.delete(
     "/deleteTrustedVet/:companionId/:index",
