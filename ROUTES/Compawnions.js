@@ -58,7 +58,8 @@ module.exports = function (db, storage) {
     email,
     username,
     name,
-    password
+    password,
+    appPetID
   ) {
     const mailOptions = {
       from: "barkcodecompawnion@gmail.com", // Replace with your email
@@ -148,7 +149,7 @@ module.exports = function (db, storage) {
       }
 
       // Send the email with unencrypted password before hashing it
-      await sendCompawnionRegistrationEmail(Email, Username, Name, Password);
+      await sendCompawnionRegistrationEmail(Email, Username, Name, Password, appPetID);
 
       // Hash the password
       const hashedPassword = await bcrypt.hash(Password, 10);
@@ -1071,8 +1072,27 @@ Compawnions.put("/accountUpdate/:companionId", async (req, res) => {
     try {
       const userId = req.params.id;
       const userRef = db.collection("Compawnions").doc(userId);
+      const userDoc = await userRef.get();
+
+      if (!userDoc.exists) {
+        return res.status(404).json({ message: "Companion not found." });
+      }
+
+      const appPetID = userDoc.data().CompawnionUser.appPetID;
+
+      if (appPetID) {
+        const adoptedAnimalRef = db.collection("AdoptedAnimals").doc(appPetID);
+        const adoptedAnimalDoc = await adoptedAnimalRef.get();
+
+        if (adoptedAnimalDoc.exists) {
+          const archivedAnimalRef = db.collection("PET_ARCHIVE").doc(appPetID);
+          await archivedAnimalRef.set(adoptedAnimalDoc.data());
+          await adoptedAnimalRef.delete();
+        }
+      }
+
       await userRef.delete();
-      res.json({ message: "Companion deleted successfully." });
+      res.json({ message: "Companion and associated pets archived successfully." });
     } catch (error) {
       res.status(500).json({ message: "Error deleting Companion." });
     }
