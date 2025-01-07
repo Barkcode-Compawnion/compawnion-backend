@@ -481,6 +481,45 @@ module.exports = function (db, storage) {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+Compawnions.get("/accountget/:compawnionId", async (req, res) => {
+  try {
+    const companionId = req.params.compawnionId;
+    const userRef = db.collection("Compawnions").doc(companionId);
+    const doc = await userRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({ message: "Companion not found." });
+    }
+
+    const companionData = doc.data();
+    console.log(companionData);  // Log the entire data for debugging
+
+    // Access the nested `accountCreate` object
+    const accountCreate = companionData.CompawnionUser?.accountCreate;
+
+    if (!accountCreate) {
+      return res.status(404).json({ message: "Account creation data not found." });
+    }
+
+    const { FirstName, LastName, Username, Email, Phonenumber } = accountCreate;
+
+    res.json({
+      message: "Companion account retrieved successfully.",
+      data: {
+        id: doc.id,
+        FirstName,
+        LastName,
+        Username,
+        Email,
+        Phonenumber,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error retrieving Companion account." });
+  }
+});
+
+  
   // Read All Companions
   Compawnions.get("/", async (req, res) => {
     try {
