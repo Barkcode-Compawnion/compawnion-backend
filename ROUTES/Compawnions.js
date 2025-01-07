@@ -72,6 +72,7 @@ module.exports = function (db, storage) {
           <li><strong>Name:</strong> ${name}</li>
           <li><strong>Username:</strong> ${username}</li>
           <li><strong>Email:</strong> ${email}</li>
+          <li><strong>App Pet ID:</strong> ${appPetID}</li>
         </ul>
         <p>Thank you for choosing to be a COMPAWNION!</p>
       `,
