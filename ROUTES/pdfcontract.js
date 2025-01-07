@@ -93,11 +93,11 @@ module.exports = function (db) {
               } months`
             : "N/A"
         }
+        Size: ${background.size || "N/A"}
+        Weight: ${background.weight || "N/A"} kg
 
         Rescue Details:
         - Rescue Date: ${background.rescueDate || "N/A"}
-        - Size: ${background.size || "N/A"}
-        - Weight: ${background.weight || "N/A"} kg
         - Rescue Story: ${background.rescueStory || "N/A"}
         
         Medical History:
