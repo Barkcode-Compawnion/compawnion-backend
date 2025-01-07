@@ -410,13 +410,73 @@ module.exports = function (db, storage) {
           .json({ message: "Verification code has expired." });
       }
 
-      res.json({ message: "Verification code is valid." });
+      // Set resetSession flag to true to allow password reset
+      await db.collection("Compawnions").doc(docId).update({
+        "CompawnionUser.resetSession": true, // Set session flag to true
+      });
+
+      res.json({
+        message: "Verification code is valid. You can now reset your password.",
+      });
     } catch (error) {
       console.error("Error in resetPassword/verify:", error);
       res.status(500).json({ message: "Error verifying the reset code." });
     }
   });
 
+  Compawnions.put("/resetPassword", async (req, res) => {
+    try {
+      const { newPassword, confirmPassword, username } = req.body; // Added username to the request body
+
+      // Validate input
+      if (!newPassword || !confirmPassword || !username) {
+        return res
+          .status(400)
+          .json({
+            message: "All fields (password and username) are required.",
+          });
+      }
+
+      if (newPassword !== confirmPassword) {
+        return res.status(400).json({ message: "Passwords do not match." });
+      }
+
+      // Fetch user by username and with a valid reset session
+      const snapshot = await db
+        .collection("Compawnions")
+        .where("CompawnionUser.accountCreate.Username", "==", username) // Search by username
+        .where("CompawnionUser.resetSession", "==", true) // Ensure the reset session is valid
+        .get();
+
+      if (snapshot.empty) {
+        return res.status(403).json({
+          message:
+            "Unauthorized or username not found. Please verify your reset code first.",
+        });
+      }
+
+      const docId = snapshot.docs[0].id;
+      const userDoc = snapshot.docs[0].data();
+
+      // Debugging: Log the current user data
+      console.log("User document:", userDoc);
+
+      // Hash the new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update the password in the correct field
+      await db.collection("Compawnions").doc(docId).update({
+        "CompawnionUser.accountCreate.Password": hashedPassword, // Update the password in the correct field
+        "CompawnionUser.resetSession": null, // Clear the reset session flag after successful reset
+      });
+
+      res.json({ message: "Password has been successfully reset." });
+    } catch (error) {
+      console.error("Error in resetPassword:", error);
+      res.status(500).json({ message: "Error resetting password." });
+    }
+  });
+  
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
