@@ -746,16 +746,23 @@ module.exports = function (db, storage) {
       const today = new Date();
       const todayFormatted = today.toISOString().split("T")[0];
 
-      // Query the Compawnions collection for today's schedules
-      const snapshot = await db
-        .collection("Compawnions")
-        .where("CompawnionUser.CompawnionSched.CSDate", "==", todayFormatted)
-        .get();
+      // Query the Compawnions collection
+      const snapshot = await db.collection("Compawnions").get();
 
-      const schedules = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      // Filter schedules for today
+      const schedules = [];
+      snapshot.forEach((doc) => {
+        const compawnionData = doc.data().CompawnionUser;
+        const compawnionSched = compawnionData.CompawnionSched || [];
+        compawnionSched.forEach((sched) => {
+          if (sched.CSDate === todayFormatted) {
+            schedules.push({
+              companionId: doc.id,
+              ...sched,
+            });
+          }
+        });
+      });
 
       res.json({
         message: "Today's schedules retrieved successfully.",
