@@ -684,6 +684,60 @@ module.exports = function (db, storage) {
       });
     }
 
+    Compawnions.put("/changePassword/:companionId", async (req, res) => {
+      try {
+        const companionId = req.params.companionId;
+        const { username, currentPassword, newPassword, confirmNewPassword } =
+          req.body;
+
+        // Validate inputs
+        if (!currentPassword || !newPassword || !confirmNewPassword) {
+          return res
+            .status(400)
+            .json({ message: "All password fields are required." });
+        }
+
+        if (newPassword !== confirmNewPassword) {
+          return res.status(400).json({ message: "New passwords do not match." });
+        }
+
+        // Reference to the specific document in the Compawnions collection
+        const userRef = db.collection("Compawnions").doc(companionId);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+          return res.status(404).json({ message: "Companion not found." });
+        }
+
+        const userData = userDoc.data();
+        const storedPassword = userData?.CompawnionUser?.accountCreate?.Password;
+
+        // Check if current password matches
+        const isPasswordCorrect = await bcrypt.compare(
+          currentPassword,
+          storedPassword
+        );
+        if (!isPasswordCorrect) {
+          return res
+            .status(401)
+            .json({ message: "Current password is incorrect." });
+        }
+
+        // Hash the new password
+        const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+        // Update the password in the database
+        await userRef.update({
+          "CompawnionUser.accountCreate.Password": hashedNewPassword,
+        });
+
+        res.json({ message: "Password changed successfully." });
+      } catch (error) {
+        console.error("Error changing password:", error);
+        res.status(500).json({ message: "Error changing password." });
+      }
+    });
+
     if (!MedSched) {
       return res.status(400).json({
         message: "MedSched data is required for updating.",
