@@ -1236,6 +1236,51 @@ Compawnions.put("/accountUpdate/:companionId", async (req, res) => {
     }
   });  
 
+    Compawnions.delete(
+    "/deleteMedSched/:companionId/:index",
+    async (req, res) => {
+      const { companionId, index } = req.params;
+      const indexNumber = parseInt(index, 10);
+
+      if (isNaN(indexNumber)) {
+        return res.status(400).json({
+          message: "Invalid index provided.",
+        });
+      }
+
+      try {
+        const userRef = db.collection("Compawnions").doc(companionId);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+          return res.status(404).json({ message: "Companion not found." });
+        }
+
+        let medSchedArray = userDoc.data().CompawnionUser.MedSched || [];
+
+        if (indexNumber < 0 || indexNumber >= medSchedArray.length) {
+          return res.status(400).json({
+            message: "Index out of bounds.",
+          });
+        }
+
+        medSchedArray.splice(indexNumber, 1); // Remove the item at the specified index.
+
+        await userRef.update({
+          "CompawnionUser.MedSched": medSchedArray,
+        });
+
+        res.json({ message: "MedSched deleted successfully." });
+      } catch (error) {
+        console.error("Error deleting MedSched:", error);
+        res.status(500).json({
+          message: "Failed to delete MedSched.",
+          error: error.message,
+        });
+      }
+    }
+  );
+
   Compawnions.delete(
     "/deleteTrustedVet/:companionId/:index",
     async (req, res) => {
