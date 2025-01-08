@@ -152,6 +152,22 @@ module.exports = function (db, storage) {
     }
   });
 
+  ra.get("/archived/:id", async (req, res) => {
+    try {
+      const userId = req.params.id;
+      const userRef = db.collection("PET_ARCHIVE").doc(userId);
+      const doc = await userRef.get();
+
+      if (!doc.exists) {
+        res.status(404).json({ message: "pet not found" });
+      } else {
+        res.json({ id: doc.id, ...doc.data() });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Error retrieving pet", error });
+    }
+  });
+
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Add a new pet
   // Request body: {
