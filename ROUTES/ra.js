@@ -168,6 +168,29 @@ module.exports = function (db, storage) {
     }
   });
 
+  ra.put("/archived/:id", async (req, res) => {
+    try {
+      const userId = req.params.id;
+      const userRef = db.collection("PET_ARCHIVE").doc(userId);
+      const updatedUser = req.body;
+      await userRef.update(updatedUser);
+      res.json({ message: "Pet updated successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Error updating Pet", error });
+    }
+  });
+
+  ra.delete("/archived/:id", async (req, res) => {
+    try {
+      const userId = req.params.id;
+      const userRef = db.collection("PET_ARCHIVE").doc(userId);
+      await userRef.delete();
+      res.json({ message: "Pet deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Error deleting Pet", error });
+    }
+  });
+
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Add a new pet
   // Request body: {
