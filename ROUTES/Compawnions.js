@@ -5,14 +5,14 @@ const nodemailer = require("nodemailer");
 const cookieParser = require("cookie-parser");
 const Compawnions = express.Router();
 
-const secretKey = "sikretolangto"; // Replace with your environment variable
+const secretKey = "sikretolangto";
 
-// Configure nodemailer transporter securely
+// nodemailer setting
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "barkcodecompawnion@gmail.com", // Replace with your email
-    pass: "fmji xuvs akpb mrke", // Replace with your app password
+    user: "barkcodecompawnion@gmail.com",
+    pass: "fmji xuvs akpb mrke",
   },
 });
 
@@ -22,9 +22,9 @@ const transporter = nodemailer.createTransport({
  * @returns {express.Router}
  */
 module.exports = function (db, storage) {
-  /**
-   * Helper: Generate the next Companion ID.
-   */
+
+
+  // generates a compawnion ID
   async function getNextCompId() {
     const counterRef = db.collection("Counter").doc("CompIDCounter");
 
@@ -46,23 +46,20 @@ module.exports = function (db, storage) {
 
       return newCompId;
     } catch (error) {
-      console.error("Error generating new Companion ID:", error);
-      throw new Error("Failed to generate new Companion ID.");
+      console.error("Error generating new Compawnion ID:", error);
+      throw new Error("Failed to generate new Compawnion ID.");
     }
   }
 
-  /**
-   * Helper: Send registration email to Compawnion.
-   */
+  //Send registration email to Compawnion user.
   async function sendCompawnionRegistrationEmail(
     email,
     username,
     name,
-    password,
-    appPetID
+    password
   ) {
     const mailOptions = {
-      from: "barkcodecompawnion@gmail.com", // Replace with your email
+      from: "barkcodecompawnion@gmail.com",
       to: email,
       subject: "Compawnion Registration Successful",
       html: `
@@ -82,19 +79,12 @@ module.exports = function (db, storage) {
     await transporter.sendMail(mailOptions);
   }
 
-  // ////////////////////////////////////////////////////////////////////////
-  // Routes Start Here
-  // ////////////////////////////////////////////////////////////////////////
 
-  /**
-   * POST: Register a new Companion.
-   */
-  // Register Companion
-  // Register Companion
+  // Register Compawnion
   Compawnions.post("/register", async (req, res) => {
     const {
-      accountCreate: { Name, Username, Email, Password, Profile }, // Profile is optional
-      appPetID, // Parameter to associate adopted pet
+      accountCreate: { Name, Username, Email, Password, Profile },
+      appPetID,
     } = req.body;
 
     if (!appPetID) {
@@ -149,16 +139,16 @@ module.exports = function (db, storage) {
       }
 
       // Send the email with unencrypted password before hashing it
-      await sendCompawnionRegistrationEmail(Email, Username, Name, Password, appPetID);
+      await sendCompawnionRegistrationEmail(Email, Username, Name, Password);
 
       // Hash the password
       const hashedPassword = await bcrypt.hash(Password, 10);
 
-      // Generate Companion ID
+      // Generate Compawnion ID
       const compId = await getNextCompId();
       const formattedCompId = compId.toString().padStart(3, "0");
 
-      // Create a new Companion document
+      // Create a new Compawnion document
       const newCompanionData = {
         CompawnionUser: {
           accountCreate: {
@@ -183,21 +173,17 @@ module.exports = function (db, storage) {
         .set(newCompanionData);
 
       res.status(201).json({
-        message: `Companion registered successfully with ID: ${formattedCompId}`,
+        message: `Compawnion registered successfully with ID: ${formattedCompId}`,
       });
     } catch (error) {
-      console.error("Error registering companion:", error);
+      console.error("Error registering compawnion:", error);
       res.status(500).json({
-        message: "Failed to register companion.",
+        message: "Failed to register compawnion.",
         error: error.message,
       });
     }
   });
 
-  /**
-   * POST: Login Companion with Remember Me.
-   */
-  // Login Companion with Remember Me option
   // Login route
   Compawnions.post("/login", async (req, res) => {
     const { Username, Password, rememberMe } = req.body;
@@ -217,23 +203,23 @@ module.exports = function (db, storage) {
       // Get the user data
       const userData = userSnapshot.docs[0].data();
 
-      // Compare the provided password with the hashed password stored in Firestore
+      // Compare the provided password with the hashed password stored in database
       const isMatch = await bcrypt.compare(
         Password,
         userData.CompawnionUser.accountCreate.Password
-      ); // Ensure correct path
+      ); 
 
       if (!isMatch) {
         return res.status(401).json({ message: "Invalid credentials." });
       }
 
-      // Fetch the appPetID associated with the companion
+      // Fetch the appPetID associated with the compawnion
       const appPetID = userData.CompawnionUser.appPetID;
 
       if (!appPetID) {
         return res
           .status(400)
-          .json({ message: "No associated pet found for this companion." });
+          .json({ message: "No associated pet found for this compawnion." });
       }
 
       // Check if the appPetID exists in the AdoptedAnimals collection
@@ -281,9 +267,6 @@ module.exports = function (db, storage) {
     }
   });
 
-  /**
-   * POST: Logout Companion.
-   */
   // Logout route
   Compawnions.post("/logout", (req, res) => {
     // Clear the JWT token cookie
@@ -308,7 +291,7 @@ module.exports = function (db, storage) {
     }
   });
 
-    Compawnions.post("/forgotPassword", async (req, res) => {
+  Compawnions.post("/forgotPassword", async (req, res) => {
     try {
       const { email } = req.body;
 
@@ -350,9 +333,10 @@ module.exports = function (db, storage) {
     }
   });
 
+  // verification code 
   async function sendVerificationEmail(email, verificationCode) {
     const mailOptions = {
-      from: "barkcodecompawnion@gmail.com", // Replace with your email
+      from: "barkcodecompawnion@gmail.com",
       to: email,
       subject: "Reset Password Verification Code",
       html: `
@@ -393,7 +377,6 @@ module.exports = function (db, storage) {
       const userDoc = snapshot.docs[0].data();
       const storedResetCode = userDoc.CompawnionUser.resetCode; // Stored as a number
 
-      // Debugging: Log the stored and entered reset codes
       console.log("Stored Reset Code:", storedResetCode);
       console.log("Entered Reset Code:", enteredResetCode);
 
@@ -411,115 +394,13 @@ module.exports = function (db, storage) {
           .json({ message: "Verification code has expired." });
       }
 
-      // Set resetSession flag to true to allow password reset
-      await db.collection("Compawnions").doc(docId).update({
-        "CompawnionUser.resetSession": true, // Set session flag to true
-      });
-
-      res.json({
-        message: "Verification code is valid. You can now reset your password.",
-      });
+      res.json({ message: "Verification code is valid." });
     } catch (error) {
       console.error("Error in resetPassword/verify:", error);
       res.status(500).json({ message: "Error verifying the reset code." });
     }
   });
 
-  Compawnions.put("/resetPassword", async (req, res) => {
-    try {
-      const { newPassword, confirmPassword, username } = req.body; // Added username to the request body
-
-      // Validate input
-      if (!newPassword || !confirmPassword || !username) {
-        return res
-          .status(400)
-          .json({
-            message: "All fields (password and username) are required.",
-          });
-      }
-
-      if (newPassword !== confirmPassword) {
-        return res.status(400).json({ message: "Passwords do not match." });
-      }
-
-      // Fetch user by username and with a valid reset session
-      const snapshot = await db
-        .collection("Compawnions")
-        .where("CompawnionUser.accountCreate.Username", "==", username) // Search by username
-        .where("CompawnionUser.resetSession", "==", true) // Ensure the reset session is valid
-        .get();
-
-      if (snapshot.empty) {
-        return res.status(403).json({
-          message:
-            "Unauthorized or username not found. Please verify your reset code first.",
-        });
-      }
-
-      const docId = snapshot.docs[0].id;
-      const userDoc = snapshot.docs[0].data();
-
-      // Debugging: Log the current user data
-      console.log("User document:", userDoc);
-
-      // Hash the new password
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-      // Update the password in the correct field
-      await db.collection("Compawnions").doc(docId).update({
-        "CompawnionUser.accountCreate.Password": hashedPassword, // Update the password in the correct field
-        "CompawnionUser.resetSession": null, // Clear the reset session flag after successful reset
-      });
-
-      res.json({ message: "Password has been successfully reset." });
-    } catch (error) {
-      console.error("Error in resetPassword:", error);
-      res.status(500).json({ message: "Error resetting password." });
-    }
-  });
-  
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-Compawnions.get("/accountget/:compawnionId", async (req, res) => {
-  try {
-    const companionId = req.params.compawnionId;
-    const userRef = db.collection("Compawnions").doc(companionId);
-    const doc = await userRef.get();
-
-    if (!doc.exists) {
-      return res.status(404).json({ message: "Companion not found." });
-    }
-
-    const companionData = doc.data();
-    console.log(companionData);  // Log the entire data for debugging
-
-    // Access the nested `accountCreate` object
-    const accountCreate = companionData.CompawnionUser?.accountCreate;
-
-    if (!accountCreate) {
-      return res.status(404).json({ message: "Account creation data not found." });
-    }
-
-    const { FirstName, LastName, Username, Email, PhoneNumber } = accountCreate;
-
-    res.json({
-      message: "Companion account retrieved successfully.",
-      data: {
-        id: doc.id,
-        FirstName,
-        LastName,
-        Username,
-        Email,
-        PhoneNumber,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({ message: "Error retrieving Companion account." });
-  }
-});
-
-  
   // Read All Companions
   Compawnions.get("/", async (req, res) => {
     try {
@@ -537,7 +418,7 @@ Compawnions.get("/accountget/:compawnionId", async (req, res) => {
     }
   });
 
-  // Read a specific Companion by ID
+  // Read a specific Compawnion by ID
   Compawnions.get("/:id", async (req, res) => {
     try {
       const userId = req.params.id;
@@ -545,10 +426,10 @@ Compawnions.get("/accountget/:compawnionId", async (req, res) => {
       const doc = await userRef.get();
 
       if (!doc.exists) {
-        return res.status(404).json({ message: "Companion not found." });
+        return res.status(404).json({ message: "Compawnion not found." });
       }
       res.json({
-        message: "Companion retrieved successfully.",
+        message: "Compawnion retrieved successfully.",
         data: { id: doc.id, ...doc.data() },
       });
     } catch (error) {
@@ -778,44 +659,6 @@ Compawnions.get("/accountget/:compawnionId", async (req, res) => {
     }
   });
 
-  // Get All CompanionSchedules for today
-  Compawnions.get("/CompawnionSched/today", async (req, res) => {
-    try {
-      // Get the current date
-      const today = new Date();
-      const todayFormatted = today.toISOString().split("T")[0];
-
-      // Query the Compawnions collection
-      const snapshot = await db.collection("Compawnions").get();
-
-      // Filter schedules for today
-      const schedules = [];
-      snapshot.forEach((doc) => {
-        const compawnionData = doc.data().CompawnionUser;
-        const compawnionSched = compawnionData.CompawnionSched || [];
-        compawnionSched.forEach((sched) => {
-          if (sched.CSDate === todayFormatted) {
-            schedules.push({
-              companionId: doc.id,
-              ...sched,
-            });
-          }
-        });
-      });
-
-      res.json({
-        message: "Today's schedules retrieved successfully.",
-        data: schedules,
-      });
-    } catch (error) {
-      console.error("Error retrieving today's schedules:", error);
-      res.status(500).json({
-        message: "Failed to retrieve today's schedules.",
-        error: error.message,
-      });
-    }
-  });
-
   // Route to get CompawnionSched details
   Compawnions.get("/CompawnionSched/:companionId", async (req, res) => {
     const { companionId } = req.params;
@@ -848,7 +691,7 @@ Compawnions.get("/accountget/:compawnionId", async (req, res) => {
 
   // Get the adopted animal owned by the Companion using their appPetID
   Compawnions.get("/myPets/:companionId", async (req, res) => {
-    const { companionId } = req.params; // Get companionId from the URL params
+    const { companionId } = req.params;
 
     try {
       // Retrieve Companion document by companionId
@@ -868,8 +711,6 @@ Compawnions.get("/accountget/:compawnionId", async (req, res) => {
         });
       }
 
-      // Now, make a request to the adoptedAnimals route to get the adopted animal
-      // Using the already existing method in adoptedAnimals.js to fetch the adopted animal by appPetID
       const adoptedAnimalRef = db.collection("AdoptedAnimals").doc(appPetID);
       const adoptedAnimalDoc = await adoptedAnimalRef.get();
 
@@ -888,53 +729,44 @@ Compawnions.get("/accountget/:compawnionId", async (req, res) => {
     }
   });
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Update Compawnion's account information, including Profile
+  Compawnions.put("/accountUpdate/:companionId", async (req, res) => {
+    try {
+      const companionId = req.params.companionId;
+      const { accountCreate } = req.body;
 
-  // Update Companion's account information, including Profile
-  // Update Companion's account information, including Profile
-Compawnions.put("/accountUpdate/:companionId", async (req, res) => {
-  try {
-    const companionId = req.params.companionId;
-    const { FirstName, LastName, Username, Email, PhoneNumber } = req.body; // Expecting fields to be updated
+      if (!accountCreate) {
+        return res
+          .status(400)
+          .json({ message: "accountCreate data is required." });
+      }
 
-    // Reference to the specific document in the Compawnions collection
-    const userRef = db.collection("Compawnions").doc(companionId);
+      // Check if the new password is provided and hash it
+      if (accountCreate.Password) {
+        accountCreate.Password = await bcrypt.hash(accountCreate.Password, 10);
+      }
 
-    // Get the current document data to merge changes
-    const userDoc = await userRef.get();
-    if (!userDoc.exists) {
-      return res.status(404).json({ message: "Companion not found." });
+      const userRef = db.collection("Compawnions").doc(companionId);
+
+      const userDoc = await userRef.get();
+      if (!userDoc.exists) {
+        return res.status(404).json({ message: "Companion not found." });
+      }
+
+      // Update the accountCreate subfield with the new data, including Profile
+      await userRef.update({
+        "CompawnionUser.accountCreate": {
+          ...userDoc.data().CompawnionUser.accountCreate,
+          ...accountCreate, 
+        },
+      });
+
+      res.json({ message: "Companion account updated successfully." });
+    } catch (error) {
+      console.error("Error updating companion account:", error);
+      res.status(500).json({ message: "Error updating companion account." });
     }
-
-    // Retrieve existing data from CompawnionUser.accountCreate
-    const existingData = userDoc.data().CompawnionUser.accountCreate || {};
-
-    // Combine first and last name into a single "Name" field (optional)
-    const FullName = (FirstName && LastName) ? `${FirstName} ${LastName}` : existingData.name;
-
-    // Prepare the updated accountCreate object, only updating fields provided in the request
-    const updatedAccountCreate = {
-      Name: FullName || existingData.Name,
-      FirstName: FirstName || existingData.FirstName,
-      LastName: LastName || existingData.LastName,
-      Username: Username || existingData.Username,
-      Email: Email || existingData.Email,
-      PhoneNumber: PhoneNumber || existingData.PhoneNumber,
-    };
-
-    // Update the accountCreate subfield with the new data
-    await userRef.update({
-      "CompawnionUser.accountCreate": updatedAccountCreate,
-    });
-
-    res.json({ message: "Companion account updated successfully." });
-  } catch (error) {
-    console.error("Error updating companion account:", error);
-    res.status(500).json({ message: "Error updating companion account." });
-  }
-});
-
+  });
 
   Compawnions.put("/changePassword/:companionId", async (req, res) => {
     try {
@@ -953,7 +785,6 @@ Compawnions.put("/accountUpdate/:companionId", async (req, res) => {
         return res.status(400).json({ message: "New passwords do not match." });
       }
 
-      // Reference to the specific document in the Compawnions collection
       const userRef = db.collection("Compawnions").doc(companionId);
       const userDoc = await userRef.get();
 
@@ -1141,102 +972,19 @@ Compawnions.put("/accountUpdate/:companionId", async (req, res) => {
     }
   );
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
   // Delete Companion
   Compawnions.delete("/:id", async (req, res) => {
-    const { adminUsername, adminPassword } = req.body; // Admin credentials from request body
-    const userId = req.params.id; // User (Companion) ID to delete
-
-    if (!adminUsername || !adminPassword) {
-      return res
-        .status(400)
-        .json({ message: "Admin username and password are required." });
-    }
-
     try {
-      // Verify admin credentials
-      const adminSnapshot = await db
-        .collection("Admins")
-        .where("aStaffInfo.Username", "==", adminUsername)
-        .limit(1)
-        .get();
-
-      if (adminSnapshot.empty) {
-        return res.status(404).json({ message: "Admin not found." });
-      }
-
-      const adminData = adminSnapshot.docs[0].data();
-      const isPasswordValid = await bcrypt.compare(
-        adminPassword,
-        adminData.aStaffInfo.Password
-      );
-
-      if (!isPasswordValid) {
-        return res.status(401).json({ message: "Invalid admin credentials." });
-      }
-
-      // Fetch the Companion (User) document
-      const companionRef = db.collection("Compawnions").doc(userId);
-      const companionDoc = await companionRef.get();
-
-      if (!companionDoc.exists) {
-        return res.status(404).json({ message: "Companion not found." });
-      }
-
-      const companionData = companionDoc.data();
-      const appPetID = companionData.CompawnionUser.appPetID;
-
-      if (!appPetID) {
-        return res
-          .status(400)
-          .json({ message: "No associated pets to transfer." });
-      }
-
-      // Transfer associated pets back to the archive
-      const adoptedAnimalRef = db.collection("AdoptedAnimals").doc(appPetID);
-      const adoptedAnimalDoc = await adoptedAnimalRef.get();
-
-      if (!adoptedAnimalDoc.exists) {
-        return res.status(404).json({ message: "Adopted pet not found." });
-      }
-
-      const adoptedAnimalData = adoptedAnimalDoc.data();
-
-      for (const [petId, petData] of Object.entries(adoptedAnimalData)) {
-        const rescuedAnimalRef = db.collection("PET_ARCHIVE").doc(petId);
-        await rescuedAnimalRef.set(
-          { ...petData, status: "Archived" },
-          { merge: true }
-        );
-      }
-
-      // Delete the adopted animal record
-      await adoptedAnimalRef.delete();
-
-      // Delete the Companion account
-      await companionRef.delete();
-
-      // Log the deletion event
-      console.log(
-        `Admin ${adminUsername} deleted Companion account with ID: ${userId}.`
-      );
-
-      res.json({
-        message:
-          "Companion deleted successfully, and associated pets transferred back.",
-      });
+      const userId = req.params.id;
+      const userRef = db.collection("Compawnions").doc(userId);
+      await userRef.delete();
+      res.json({ message: "Companion deleted successfully." });
     } catch (error) {
-      console.error("Error deleting Companion:", error);
-      res.status(500).json({
-        message: "Error deleting Companion.",
-        error: error.message,
-      });
+      res.status(500).json({ message: "Error deleting Companion." });
     }
-  });  
+  });
 
-    Compawnions.delete(
+  Compawnions.delete(
     "/deleteMedSched/:companionId/:index",
     async (req, res) => {
       const { companionId, index } = req.params;
@@ -1264,7 +1012,7 @@ Compawnions.put("/accountUpdate/:companionId", async (req, res) => {
           });
         }
 
-        medSchedArray.splice(indexNumber, 1); // Remove the item at the specified index.
+        medSchedArray.splice(indexNumber, 1);
 
         await userRef.update({
           "CompawnionUser.MedSched": medSchedArray,
@@ -1309,7 +1057,7 @@ Compawnions.put("/accountUpdate/:companionId", async (req, res) => {
           });
         }
 
-        trustedVetArray.splice(indexNumber, 1); // Remove the item at the specified index.
+        trustedVetArray.splice(indexNumber, 1);
 
         await userRef.update({
           "CompawnionUser.TrustedVet": trustedVetArray,
@@ -1355,7 +1103,7 @@ Compawnions.put("/accountUpdate/:companionId", async (req, res) => {
           });
         }
 
-        compawnionSchedArray.splice(indexNumber, 1); // Remove the item at the specified index.
+        compawnionSchedArray.splice(indexNumber, 1);
 
         await userRef.update({
           "CompawnionUser.CompawnionSched": compawnionSchedArray,

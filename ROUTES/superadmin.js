@@ -2,7 +2,7 @@ const express = require("express");
 const jwt = require("jsonwebtoken");
 
 const Superadmins = express.Router();
-const secretKey = "sikretolangto"; // Store in environment variables
+const secretKey = "sikretolangto";
 
 /**
  * @param {import('firebase-admin/firestore').Firestore} db
@@ -15,7 +15,7 @@ module.exports = function (db, storage) {
     const { Password } = req.body; // Only password input
 
     try {
-      // Fetch the superadmin document from Firestore
+      // Fetch the superadmin document from database
       const superadminDoc = await db.collection("superadmin").doc("onlysuperadmin").get();
 
       if (!superadminDoc.exists) {

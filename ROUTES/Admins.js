@@ -4,7 +4,7 @@ const bcrypt = require("bcrypt");
 const nodemailer = require("nodemailer");
 const Admins = express.Router();
 
-const secretKey = "sikretolangto"; // Replace with your secret key
+const secretKey = "sikretolangto";
 
 /**
  * @param {import('firebase-admin/firestore').Firestore} db
@@ -12,12 +12,12 @@ const secretKey = "sikretolangto"; // Replace with your secret key
  * @returns {express.Router}
  */
 module.exports = function (db, storage) {
-  // Configure nodemailer transporter with direct settings
+  // nodemailer setting
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
-      user: "barkcodecompawnion@gmail.com", // Replace with actual email
-      pass: "fmji xuvs akpb mrke", // Replace with actual app password
+      user: "barkcodecompawnion@gmail.com",
+      pass: "fmji xuvs akpb mrke",
     },
   });
 
@@ -55,8 +55,7 @@ module.exports = function (db, storage) {
     name,
     password
   ) {
-    // Optional: generate a temporary password if you don't want to send the real password
-    const tempPassword = password; // In this case, we are sending the original password.
+    const tempPassword = password;
     const mailOptions = {
       from: "barkcodecompawnion@gmail.com",
       to: email,
@@ -81,7 +80,6 @@ module.exports = function (db, storage) {
     await transporter.sendMail(mailOptions);
   }
 
-  // Function to send the login notification email
   async function sendLoginNotificationEmail(email, name, loginTime) {
     const mailOptions = {
       from: "barkcodecompawnion@gmail.com",
@@ -125,7 +123,7 @@ module.exports = function (db, storage) {
       return res.status(400).json({ message: "All fields are required." });
     }
 
-    // Translate Image into blob
+    // Translate Image file into blob
     let Picture = null;
     if (Image) {
       try {
@@ -137,17 +135,16 @@ module.exports = function (db, storage) {
 
         const file = storage.file(`Admins/${Username}.${type.split("/")[1]}`);
         await file.save(buffer, { contentType: type });
-        Picture = `https://compawnion-backend.onrender.com/media/Admins/${Username}.${
-          type.split("/")[1]
-        }`;
+        Picture = `https://compawnion-backend.onrender.com/media/Admins/${Username}.${type.split("/")[1]
+          }`;
       } catch (error) {
         console.error("Error uploading image:", error);
         return res.status(500).json({ message: "Failed to upload image." });
       }
     }
 
+    // Check for duplicate username and email
     try {
-      // Check for duplicate username
       const existingUserSnapshot = await db
         .collection("Admins")
         .where("aStaffInfo.Username", "==", Username)
@@ -158,7 +155,6 @@ module.exports = function (db, storage) {
         return res.status(400).json({ message: "Username already exists." });
       }
 
-      // Check for duplicate email
       const existingEmailSnapshot = await db
         .collection("Admins")
         .where("aStaffInfo.Email", "==", Email)
@@ -182,11 +178,10 @@ module.exports = function (db, storage) {
         Password
       );
 
-      // Now hash the password before storing it
+      // after sending the registration email to the user the password will be hashed
       const hashedPassword = await bcrypt.hash(Password, 10);
       const token = jwt.sign({ Username }, secretKey, { expiresIn: "1h" });
 
-      // Add the new Admin document without saving AdminId
       await db
         .collection("Admins")
         .doc(formattedAdminId)
@@ -195,14 +190,14 @@ module.exports = function (db, storage) {
             Name,
             Picture,
             Username,
-            Password: hashedPassword, // Store the hashed password
+            Password: hashedPassword,
             Email,
             Mobilenumber,
             Branches,
           },
           token,
-          LastLogin: null, // Placeholder for last login
-          LastLogout: null, // Placeholder for last logout
+          LastLogin: null, // creates a timestamp when a user logs in
+          LastLogout: null, // creates a timestamp when a user logs out
         });
 
       res.status(201).json({
@@ -215,6 +210,7 @@ module.exports = function (db, storage) {
     }
   });
 
+
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Login Admin
 
@@ -222,14 +218,14 @@ module.exports = function (db, storage) {
     const { Username, Password, Email } = req.body;
     console.log(`Login attempt for username: ${Username} or email: ${Email}`); // Log the username or email
 
+
+    //function to retrieve the username/email from the database
     try {
-      // Try to retrieve the user based on the provided username
       let userSnapshot = await db
         .collection("Admins")
         .where("aStaffInfo.Username", "==", Username)
         .get();
 
-      // If no user found by username, try finding by email
       if (userSnapshot.empty) {
         console.log("No user found with this username. Trying with email.");
         userSnapshot = await db
@@ -244,10 +240,10 @@ module.exports = function (db, storage) {
         return res.status(404).json({ message: "User not found." });
       }
 
-      // Get the user data
+      // Get the user's data
       const userData = userSnapshot.docs[0].data();
 
-      // Compare the provided password with the hashed password stored in Firestore
+      // Checking the password if its correct
       const isMatch = await bcrypt.compare(
         Password,
         userData.aStaffInfo.Password
@@ -258,7 +254,7 @@ module.exports = function (db, storage) {
         return res.status(401).json({ message: "Invalid credentials." });
       }
 
-      // Update the user's last login timestamp
+      // Updates the user's last login timestamp
       const loginTimestamp = new Date().toISOString();
       const token = jwt.sign(
         { Username: userData.aStaffInfo.Username },
@@ -271,7 +267,7 @@ module.exports = function (db, storage) {
         token,
       });
 
-      // Send login notification email
+      // Sending a login notification email
       await sendLoginNotificationEmail(
         userData.aStaffInfo.Email,
         userData.aStaffInfo.Name,
@@ -290,7 +286,7 @@ module.exports = function (db, storage) {
   // Logout Admin
 
   Admins.post("/logout", async (req, res) => {
-    const { Username, Email } = req.body; // Get the Username or Email from the request body
+    const { Username, Email } = req.body;
 
     if (!Username && !Email) {
       return res
@@ -298,14 +294,13 @@ module.exports = function (db, storage) {
         .json({ message: "Username or Email is required." });
     }
 
+    //function to retrieve the username/email from the database
     try {
-      // Try to retrieve the user based on the provided username
       let userSnapshot = await db
         .collection("Admins")
         .where("aStaffInfo.Username", "==", Username)
         .get();
 
-      // If no user found by username, try finding by email
       if (userSnapshot.empty) {
         console.log("No user found with this username. Trying with email.");
         userSnapshot = await db
@@ -409,10 +404,10 @@ module.exports = function (db, storage) {
         return res.status(404).json({ message: "Admin not found" });
       }
 
-      const oldEmail = userDoc.data().aStaffInfo.Email; // Current email in the database
-      const newEmail = updatedUser.aStaffInfo.Email; // New email from the request body
+      const oldEmail = userDoc.data().aStaffInfo.Email;
+      const newEmail = updatedUser.aStaffInfo.Email; 
 
-      // Check if the new email is already taken by another admin
+      // Check if the new email is already taken by another user
       if (newEmail && newEmail !== oldEmail) {
         const emailCheckSnapshot = await db
           .collection("Admins")
@@ -437,9 +432,8 @@ module.exports = function (db, storage) {
 
           const file = storage.file(`Admins/${userId}.${type.split("/")[1]}`);
           await file.save(buffer, { contentType: type });
-          Picture = `https://compawnion-backend.onrender.com/media/Admins/${userId}.${
-            type.split("/")[1]
-          }`;
+          Picture = `https://compawnion-backend.onrender.com/media/Admins/${userId}.${type.split("/")[1]
+            }`;
         } catch (error) {
           console.error("Error uploading image:", error);
           return res.status(500).json({ message: "Failed to upload image." });
@@ -449,7 +443,7 @@ module.exports = function (db, storage) {
       updatedUser.aStaffInfo.Picture =
         Picture || userDoc.data().aStaffInfo.Picture;
 
-      // Update admin details in Firestore
+      // Update admin details in database
       await userRef.update(updatedUser);
 
       // If the email is changed, send a notification
@@ -509,11 +503,11 @@ module.exports = function (db, storage) {
 
   Admins.delete("/:id", async (req, res) => {
     try {
-      const { superadminPassword } = req.body; // Superadmin password from request body
+      const { superadminPassword } = req.body; // It requires superadmin password
       const userId = req.params.id;
       const userRef = db.collection("Admins").doc(userId);
 
-      // Fetch the superadmin document from Firestore
+      // Fetch the superadmin document from database
       const superadminDoc = await db
         .collection("superadmin")
         .doc("onlysuperadmin")
@@ -525,14 +519,14 @@ module.exports = function (db, storage) {
 
       const { superadminpassword } = superadminDoc.data();
 
-      // Compare the provided password with the stored password
+      // check if the password is correct
       if (superadminPassword !== superadminpassword) {
         return res
           .status(401)
           .json({ message: "Invalid superadmin password." });
       }
 
-      // Delete the Admin document
+      // Delete the user admin
       await userRef.delete();
       res.json({ message: "Admin deleted successfully" });
     } catch (error) {

@@ -189,7 +189,7 @@ module.exports = function (db) {
       pdfDoc.end();
     } catch (error) {
       console.error("Error generating contract:", error.message);
-      console.error("Stack Trace:", error.stack); // Logs the error stack trace
+      console.error("Stack Trace:", error.stack);
       res
         .status(500)
         .json({ message: "Failed to generate contract", error: error.message });
@@ -258,7 +258,6 @@ module.exports = function (db) {
 
       const currentDate = new Date().toLocaleDateString();
 
-      // Verify background data fields before using them
       const medicalHistory = background.medicalHistory || [];
       const vaccinationHistory = background.vaccination || [];
 
@@ -288,56 +287,11 @@ module.exports = function (db) {
       res.json({ applicant, petInfo });
     } catch (error) {
       console.error("Error fetching contract information:", error.message);
-      console.error("Stack Trace:", error.stack); // Logs the error stack trace
+      console.error("Stack Trace:", error.stack); 
       res
         .status(500)
         .json({ message: "Failed to fetch contract information", error: error.message });
     };
   });
-
-  pdfcontract.get("/applicationForm/:id", async (req, res) => {
-    const { id } = req.params;
-    if (!id) {
-      return res.status(400).json({ message: "Application ID is required" });
-    }
-
-    try {
-      let appDoc = await db
-        .collection("Applications")
-        .doc("PENDING")
-        .collection("Applications")
-        .doc(id)
-        .get();
-
-      // If not found in PENDING, check in APPROVED
-      if (!appDoc.exists) {
-        appDoc = await db
-          .collection("Applications")
-          .doc("APPROVED")
-          .collection("Applications")
-          .doc(id)
-          .get();
-
-        // If not found in either PENDING or APPROVED
-        if (!appDoc.exists) {
-          return res
-            .status(404)
-            .json({ message: "Application does not exist" });
-        }
-      }
-
-      const appData = appDoc.data();
-
-      // Send the application form data
-      res.json(appData);
-    } catch (error) {
-      console.error("Error fetching application form data:", error.message);
-      console.error("Stack Trace:", error.stack); // Logs the error stack trace
-      res
-        .status(500)
-        .json({ message: "Failed to fetch application form data", error: error.message });
-    }
-  });
-
   return pdfcontract;
 };
